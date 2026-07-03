@@ -1,2 +1,4 @@
 # AI_APPS
-Divers sites AI
+
+
+https://www.autosprite.io/app - Sprites et spreadsheets prêt à être utilisés à partir d'un T-pose - 12 dollar/mois
