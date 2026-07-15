@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Mobile Mask Studio Pro - v7 Batch Auto Tol120</title>
+  <style>
+    :root {
+      --bg-primary: #121212;
+      --bg-panel: #1e1e1e;
+      --accent: #3498db;
+      --accent-green: #2ecc71;
+      --accent-red: #e74c3c;
+      --accent-yellow: #f1c40f;
+      --text: #e0e0e0;
+      --muted: #aaa;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: var(--bg-primary);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      touch-action: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    .workspace {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #151515;
+      background-image:
+        linear-gradient(45deg, #202020 25%, transparent 25%),
+        linear-gradient(-45deg, #202020 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #202020 75%),
+        linear-gradient(-45deg, transparent 75%, #202020 75%);
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-size: 16px 16px;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .canvas-container {
+      position: relative;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    canvas {
+      display: block;
+      max-width: 96vw;
+      max-height: calc(100dvh - 205px);
+      image-rendering: pixelated;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+      background: transparent;
+      touch-action: none;
+    }
+
+    .floating-badges {
+      position: absolute;
+      top: calc(10px + env(safe-area-inset-top));
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .badge {
+      background: rgba(0,0,0,0.72);
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      backdrop-filter: blur(4px);
+      border: 1px solid #333;
+      white-space: nowrap;
+    }
+
+    #lockBadge { color: var(--accent-yellow); display: none; }
+    #modeBadge { color: var(--accent); }
+
+    .bottom-panel {
+      flex: 0 0 auto;
+      background: var(--bg-panel);
+      border-top: 1px solid #2d2d2d;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      z-index: 100;
+      box-shadow: 0 -4px 15px rgba(0,0,0,0.4);
+    }
+
+    .panel-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .history-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .file-label,
+    .btn {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #333;
+      color: white;
+      border: none;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .file-label { max-width: 90px; overflow: hidden; }
+    .btn-accent { background: var(--accent); }
+    .btn-green { background: var(--accent-green); }
+    .btn-red { background: var(--accent-red); }
+    .btn-yellow { background: #9a7600; }
+    .btn:disabled {
+      opacity: 0.38;
+      filter: grayscale(1);
+      cursor: not-allowed;
+    }
+
+    .size-inputs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .size-inputs input,
+    .number-input {
+      width: 54px;
+      background: #111;
+      border: 1px solid #444;
+      color: #fff;
+      padding: 5px 3px;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .tabs {
+      display: flex;
+      background: #111;
+      padding: 2px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-height: 34px;
+      background: transparent;
+      border: none;
+      color: #888;
+      padding: 8px 5px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .tab-btn.active { background: var(--accent); color: white; }
+
+    .tool-content {
+      background: #161616;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #2d2d2d;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tool-line {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .slider-group input[type="range"] { width: 88px; }
+
+    #btnToggleNav { background: #2c3e50; border: 1px solid #34495e; }
+    #btnToggleNav.mode-nav { background: #27ae60; }
+    #statusText { color: #aaa; font-size: 11px; white-space: nowrap; }
+
+    @media (max-width: 430px) {
+      .btn, .file-label { padding: 7px 8px; font-size: 11px; }
+      .tab-btn { font-size: 11px; }
+      .slider-group input[type="range"] { width: 72px; }
+      canvas { max-height: calc(100dvh - 265px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="workspace" id="workspace">
+    <div class="floating-badges">
+      <span class="badge" id="modeBadge">🎯 Action</span>
+      <span class="badge" id="lockBadge">🔒 Zone verrouillée</span>
+      <span class="badge" id="zoomBadge">Zoom: 100%</span>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="bottom-panel" id="bottomPanel">
+    <div class="panel-row-top">
+      <label class="file-label">
+        📁 Ouvrir
+        <input type="file" id="imageLoader" accept="image/*" style="display:none" />
+        <input type="file" id="batchFolderInput" accept="image/*" webkitdirectory multiple style="display:none" />
+      </label>
+
+      <div class="size-inputs" aria-label="Taille de sortie">
+        <input type="number" id="sizeX" value="320" min="1" />
+        <span>×</span>
+        <input type="number" id="sizeY" value="240" min="1" />
+      </div>
+
+      <button id="btnFullscreen" class="btn" type="button">⛶ Plein</button>
+      <button id="btnToggleNav" class="btn" type="button">🎯 Action</button>
+    </div>
+
+    <div class="history-row" aria-label="Historique">
+      <button id="btnUndo" class="btn" type="button" disabled>↶ Annuler</button>
+      <button id="btnRedo" class="btn" type="button" disabled>↷ Refaire</button>
+      <button id="btnBatchAuto" class="btn btn-accent" type="button">🤖 Auto dossier</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tabZoneBtn" type="button">1. Zone initiale</button>
+      <button class="tab-btn" id="tabColorBtn" type="button">2. Couleur dedans</button>
+    </div>
+
+    <div class="tool-content" id="toolContent">
+      <div id="contentZone" class="tool-line">
+        <div class="slider-group">
+          <span>Gonfle:</span>
+          <input class="number-input" type="number" id="morphPx" value="2" min="1" max="64" />
+        </div>
+        <button id="btnGrow" class="btn" type="button">➕ Gonfler</button>
+        <button id="btnShrink" class="btn" type="button">➖ Dégonfler</button>
+        <button id="btnLockZone" class="btn btn-accent" type="button">🔒 Verrouiller</button>
+        <button id="btnClearSelectionZone" class="btn" type="button">🧹 Annuler sélection</button>
+      </div>
+
+      <div id="contentColor" class="tool-line" style="display:none">
+        <div class="slider-group">
+          <span>Tol:</span>
+          <input type="range" id="toleranceSlider" min="0" max="180" value="30" />
+          <span id="toleranceVal" style="color:#f1c40f; min-width:22px;">30</span>
+        </div>
+        <button id="btnActionDelete" class="btn btn-red" type="button">🧽 Effacer</button>
+        <button id="btnActionBW" class="btn" type="button">🏁 N&amp;B</button>
+        <button id="btnActionBlack" class="btn" type="button">⬛ Noir pur</button>
+        <button id="btnClearSelection" class="btn" type="button">🧹 Annuler sélection</button>
+        <button id="btnReset" class="btn btn-yellow" type="button">↩️ Image</button>
+      </div>
+    </div>
+
+    <button id="btnExport" class="btn btn-green" style="width:100%; padding:10px; font-size:14px;" type="button">💾 Exporter PNG propre</button>
+    <span id="statusText">Ouvre une image, touche une couleur pour la sélectionner dans toute l’image.</span>
+  </div>
+
+  <script>
+    'use strict';
+
+    const imageLoader = document.getElementById('imageLoader');
+    const mainCanvas = document.getElementById('mainCanvas');
+    const ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
+    const workspace = document.getElementById('workspace');
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    const tabZoneBtn = document.getElementById('tabZoneBtn');
+    const tabColorBtn = document.getElementById('tabColorBtn');
+    const contentZone = document.getElementById('contentZone');
+    const contentColor = document.getElementById('contentColor');
+    const btnToggleNav = document.getElementById('btnToggleNav');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+    const btnUndo = document.getElementById('btnUndo');
+    const btnRedo = document.getElementById('btnRedo');
+    const btnBatchAuto = document.getElementById('btnBatchAuto');
+    const batchFolderInput = document.getElementById('batchFolderInput');
+
+    const modeBadge = document.getElementById('modeBadge');
+    const lockBadge = document.getElementById('lockBadge');
+    const zoomBadge = document.getElementById('zoomBadge');
+    const statusText = document.getElementById('statusText');
+
+    const sizeXInput = document.getElementById('sizeX');
+    const sizeYInput = document.getElementById('sizeY');
+    const morphPxInput = document.getElementById('morphPx');
+    const toleranceSlider = document.getElementById('toleranceSlider');
+    const toleranceVal = document.getElementById('toleranceVal');
+
+    const btnGrow = document.getElementById('btnGrow');
+    const btnShrink = document.getElementById('btnShrink');
+    const btnLockZone = document.getElementById('btnLockZone');
+    const btnActionDelete = document.getElementById('btnActionDelete');
+    const btnActionBW = document.getElementById('btnActionBW');
+    const btnActionBlack = document.getElementById('btnActionBlack');
+    const btnClearSelection = document.getElementById('btnClearSelection');
+    const btnClearSelectionZone = document.getElementById('btnClearSelectionZone');
+    const btnReset = document.getElementById('btnReset');
+    const btnExport = document.getElementById('btnExport');
+
+    let loadedImage = null;
+    let originalRatio = 1;
+    let isNavMode = false;
+    let isZoneLocked = false;
+    let currentTab = 'zone';
+
+    let primarySelectionMask = null;
+    let activeWorkingMask = null;
+    let currentSelectedRGB = null;
+
+    const baseCanvas = document.createElement('canvas');
+    const baseCtx = baseCanvas.getContext('2d', { willReadFrequently: true });
+
+    const MAX_HISTORY = 20;
+    const BATCH_AUTO_TOLERANCE = 120;
+    const undoStack = [];
+    const redoStack = [];
+
+    let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPointerDown = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    const activePointers = new Map();
+    let pinchStartDistance = 0;
+    let pinchStartZoom = 1;
+    let pinchStartPanX = 0;
+    let pinchStartPanY = 0;
+    let pinchStartMidX = 0;
+    let pinchStartMidY = 0;
+    let suppressTapUntilAllPointersReleased = false;
+
+    let antsOffset = 0;
+    let selectionBorderPath = null;
+    let selectionBorderMaskRef = null;
+    let pinchStartLayoutLeft = 0;
+    let pinchStartLayoutTop = 0;
+    let pinchAnchorLocalX = 0;
+    let pinchAnchorLocalY = 0;
+
+    function setStatus(message) {
+      statusText.textContent = message;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function getTolerance() {
+      return clamp(parseInt(toleranceSlider.value, 10) || 0, 0, 255);
+    }
+
+    function getMorphPx() {
+      return clamp(parseInt(morphPxInput.value, 10) || 1, 1, 64);
+    }
+
+    function countMask(mask) {
+      if (!mask) return 0;
+      let count = 0;
+      for (let i = 0; i < mask.length; i++) count += mask[i] === 1 ? 1 : 0;
+      return count;
+    }
+
+    function updateHistoryButtons() {
+      btnUndo.disabled = undoStack.length === 0;
+      btnRedo.disabled = redoStack.length === 0;
+      btnUndo.textContent = `↶ Annuler${undoStack.length ? ` (${undoStack.length})` : ''}`;
+      btnRedo.textContent = `↷ Refaire${redoStack.length ? ` (${redoStack.length})` : ''}`;
+    }
+
+    function makeSnapshot() {
+      return {
+        width: baseCanvas.width,
+        height: baseCanvas.height,
+        imageData: baseCtx.getImageData(0, 0, baseCanvas.width, baseCanvas.height)
+      };
+    }
+
+    function restoreSnapshot(snapshot) {
+      if (!snapshot) return;
+      baseCanvas.width = snapshot.width;
+      baseCanvas.height = snapshot.height;
+      sizeXInput.value = snapshot.width;
+      sizeYInput.value = snapshot.height;
+      baseCtx.putImageData(snapshot.imageData, 0, 0);
+      clearSelectionState();
+      setTab('zone');
+      setNavMode(false);
+      redraw();
+    }
+
+    function saveHistory() {
+      if (!loadedImage || baseCanvas.width < 1 || baseCanvas.height < 1) return;
+      undoStack.push(makeSnapshot());
+      if (undoStack.length > MAX_HISTORY) undoStack.shift();
+      redoStack.length = 0;
+      updateHistoryButtons();
+    }
+
+    function clearHistory() {
+      undoStack.length = 0;
+      redoStack.length = 0;
+      updateHistoryButtons();
+    }
+
+    function undo() {
+      if (!loadedImage || undoStack.length === 0) return;
+      redoStack.push(makeSnapshot());
+      if (redoStack.length > MAX_HISTORY) redoStack.shift();
+      const previous = undoStack.pop();
+      restoreSnapshot(previous);
+      updateHistoryButtons();
+      setStatus('Annulation appliquée. La sélection a été vidée.');
+    }
+
+    function redo() {
+      if (!loadedImage || redoStack.length === 0) return;
+      undoStack.push(makeSnapshot());
+      if (undoStack.length > MAX_HISTORY) undoStack.shift();
+      const next = redoStack.pop();
+      restoreSnapshot(next);
+      updateHistoryButtons();
+      setStatus('Rétablissement appliqué. La sélection a été vidée.');
+    }
+
+    btnUndo.addEventListener('click', undo);
+    btnRedo.addEventListener('click', redo);
+    document.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      const ctrlOrCmd = e.ctrlKey || e.metaKey;
+      if (!ctrlOrCmd || !loadedImage) return;
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        e.preventDefault();
+        redo();
+      }
+    });
+    updateHistoryButtons();
+
+    function updateLockUi() {
+      if (isZoneLocked) {
+        btnLockZone.textContent = '🔓 Déverrouiller';
+        btnLockZone.style.backgroundColor = '#9a7600';
+        lockBadge.style.display = 'inline-block';
+      } else {
+        btnLockZone.textContent = '🔒 Verrouiller';
+        btnLockZone.style.backgroundColor = 'var(--accent)';
+        lockBadge.style.display = 'none';
+      }
+    }
+
+    function setTab(tab) {
+      currentTab = tab;
+      const colorMode = tab === 'color';
+      tabZoneBtn.classList.toggle('active', !colorMode);
+      tabColorBtn.classList.toggle('active', colorMode);
+      contentZone.style.display = colorMode ? 'none' : 'flex';
+      contentColor.style.display = colorMode ? 'flex' : 'none';
+
+      if (!colorMode) {
+        activeWorkingMask = primarySelectionMask;
+        setStatus(isZoneLocked ? 'Zone verrouillée. Passe à “Couleur dedans” pour filtrer à l’intérieur.' : 'Touche l’image pour sélectionner cette couleur dans toute l’image.');
+      } else {
+        if (!isZoneLocked && primarySelectionMask) {
+          setStatus('Astuce: verrouille la zone avant de filtrer une couleur dedans.');
+        } else if (isZoneLocked) {
+          setStatus('Touche une couleur: elle sera sélectionnée uniquement dans la zone verrouillée.');
+        }
+      }
+      redraw();
+    }
+
+    tabZoneBtn.addEventListener('click', () => setTab('zone'));
+    tabColorBtn.addEventListener('click', () => setTab('color'));
+
+    function setNavMode(enabled, reason = '') {
+      isNavMode = !!enabled;
+      if (isNavMode) {
+        btnToggleNav.textContent = '🫲 Bouger';
+        btnToggleNav.classList.add('mode-nav');
+        modeBadge.textContent = '🫲 Navigation';
+        modeBadge.style.color = '#2ecc71';
+      } else {
+        btnToggleNav.textContent = '🎯 Action';
+        btnToggleNav.classList.remove('mode-nav');
+        modeBadge.textContent = '🎯 Action';
+        modeBadge.style.color = '#3498db';
+      }
+      if (reason) setStatus(reason);
+    }
+
+    btnToggleNav.addEventListener('click', () => {
+      setNavMode(!isNavMode);
+    });
+
+    toleranceSlider.addEventListener('input', () => {
+      toleranceVal.textContent = toleranceSlider.value;
+      if (!currentSelectedRGB) return;
+
+      if (currentTab === 'zone' && !isZoneLocked) {
+        runGlobalSelectionFromCurrentColor();
+      } else if (isZoneLocked && currentTab === 'color') {
+        runColorSelectionInsideZone();
+      }
+    });
+
+    function pixelMatches(data, offset, target, tolerance) {
+      const a = data[offset + 3];
+      if (target.a < 15) {
+        return a < 15;
+      }
+      if (a < 1) return false;
+      return Math.abs(data[offset] - target.r) <= tolerance &&
+             Math.abs(data[offset + 1] - target.g) <= tolerance &&
+             Math.abs(data[offset + 2] - target.b) <= tolerance;
+    }
+
+    function selectMatchingColor(target, tolerance, limitMask = null) {
+      const w = baseCanvas.width;
+      const h = baseCanvas.height;
+      const img = baseCtx.getImageData(0, 0, w, h).data;
+      const result = new Uint8Array(w * h);
+
+      for (let i = 0; i < img.length; i += 4) {
+        const idx = i / 4;
+        if (limitMask && limitMask[idx] !== 1) continue;
+        if (pixelMatches(img, i, target, tolerance)) result[idx] = 1;
+      }
+
+      return result;
+    }
+
+    function globalColorSelection(startX, startY, tolerance, limitMask = null) {
+      const w = baseCanvas.width;
+      const h = baseCanvas.height;
+      const total = w * h;
+      const result = new Uint8Array(total);
+
+      if (startX < 0 || startY < 0 || startX >= w || startY >= h) return result;
+
+      const startIndex = startY * w + startX;
+      if (limitMask && limitMask[startIndex] !== 1) return result;
+
+      const p = baseCtx.getImageData(startX, startY, 1, 1).data;
+      const target = { r: p[0], g: p[1], b: p[2], a: p[3] };
+      currentSelectedRGB = target;
+      return selectMatchingColor(target, tolerance, limitMask);
+    }
+
+    function runGlobalSelectionFromCurrentColor() {
+      if (!loadedImage || !currentSelectedRGB) return;
+      primarySelectionMask = selectMatchingColor(currentSelectedRGB, getTolerance());
+      activeWorkingMask = primarySelectionMask;
+      setStatus(`Sélection globale par couleur : ${countMask(primarySelectionMask)} px.`);
+      redraw();
+    }
+
+    function runColorSelectionInsideZone() {
+      if (!loadedImage || !currentSelectedRGB) return;
+
+      const w = baseCanvas.width;
+      const h = baseCanvas.height;
+      const baseMask = primarySelectionMask || new Uint8Array(w * h).fill(1);
+      activeWorkingMask = selectMatchingColor(currentSelectedRGB, getTolerance(), baseMask);
+      setStatus(`${countMask(activeWorkingMask)} px trouvés dans la zone verrouillée.`);
+      redraw();
+    }
+
+    function runMorphology(type) {
+      if (!loadedImage) return;
+
+      const w = baseCanvas.width;
+      const h = baseCanvas.height;
+      if (!primarySelectionMask) {
+        primarySelectionMask = new Uint8Array(w * h).fill(1);
+      }
+
+      let src = primarySelectionMask;
+      const steps = getMorphPx();
+
+      for (let step = 0; step < steps; step++) {
+        const dest = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) {
+          const row = y * w;
+          for (let x = 0; x < w; x++) {
+            const idx = row + x;
+            const left = x > 0 ? src[idx - 1] : 0;
+            const right = x < w - 1 ? src[idx + 1] : 0;
+            const up = y > 0 ? src[idx - w] : 0;
+            const down = y < h - 1 ? src[idx + w] : 0;
+
+            if (type === 'grow') {
+              if (src[idx] || left || right || up || down) dest[idx] = 1;
+            } else {
+              if (src[idx] && left && right && up && down) dest[idx] = 1;
+            }
+          }
+        }
+        src = dest;
+      }
+
+      primarySelectionMask = src;
+      activeWorkingMask = primarySelectionMask;
+      currentSelectedRGB = null;
+      setStatus(`${type === 'grow' ? 'Zone gonflée' : 'Zone dégonflée'} : ${countMask(primarySelectionMask)} px.`);
+      redraw();
+    }
+
+    btnGrow.addEventListener('click', () => runMorphology('grow'));
+    btnShrink.addEventListener('click', () => runMorphology('shrink'));
+
+    btnLockZone.addEventListener('click', () => {
+      if (!loadedImage || !primarySelectionMask) {
+        setStatus('Crée d’abord une zone avec la baguette magique.');
+        return;
+      }
+      isZoneLocked = !isZoneLocked;
+      updateLockUi();
+      currentSelectedRGB = null;
+      activeWorkingMask = primarySelectionMask;
+      setTab(isZoneLocked ? 'color' : 'zone');
+    });
+
+    function applyToActiveSelection(mode) {
+      if (!activeWorkingMask || !loadedImage) {
+        setStatus('Aucune sélection active.');
+        return;
+      }
+
+      const w = baseCanvas.width;
+      const h = baseCanvas.height;
+      const imgData = baseCtx.getImageData(0, 0, w, h);
+      let changed = 0;
+
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const idx = i / 4;
+        if (activeWorkingMask[idx] !== 1) continue;
+
+        if (mode === 'delete') {
+          imgData.data[i + 3] = 0;
+        } else if (mode === 'bw') {
+          const gray = Math.round(0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2]);
+          imgData.data[i] = gray;
+          imgData.data[i + 1] = gray;
+          imgData.data[i + 2] = gray;
+        } else if (mode === 'black') {
+          // Luminance minimum : on force la sélection en noir pur, sans toucher à l'alpha.
+          imgData.data[i] = 0;
+          imgData.data[i + 1] = 0;
+          imgData.data[i + 2] = 0;
+        }
+        changed++;
+      }
+
+      if (changed === 0) {
+        setStatus('Aucun pixel modifié dans la sélection active.');
+        return;
+      }
+
+      saveHistory();
+      baseCtx.putImageData(imgData, 0, 0);
+      currentSelectedRGB = null;
+
+      // On garde la zone verrouillée après l’action pour permettre de nettoyer plusieurs couleurs dedans.
+      activeWorkingMask = isZoneLocked ? primarySelectionMask : null;
+      setStatus(`${changed} px modifiés${mode === 'black' ? ' en noir pur' : ''}. La zone verrouillée est conservée.`);
+      redraw();
+    }
+
+    btnActionDelete.addEventListener('click', () => applyToActiveSelection('delete'));
+    btnActionBW.addEventListener('click', () => applyToActiveSelection('bw'));
+    btnActionBlack.addEventListener('click', () => applyToActiveSelection('black'));
+
+    function clearSelectionState() {
+      primarySelectionMask = null;
+      activeWorkingMask = null;
+      selectionBorderPath = null;
+      selectionBorderMaskRef = null;
+      currentSelectedRGB = null;
+      isZoneLocked = false;
+      updateLockUi();
+    }
+
+    function clearSelectionOnly() {
+      clearSelectionState();
+      setTab('zone');
+      setNavMode(false);
+      setStatus('Sélection annulée. L’image modifiée est conservée. Mode Action réactivé.');
+      redraw();
+    }
+
+    btnClearSelection.addEventListener('click', clearSelectionOnly);
+    btnClearSelectionZone.addEventListener('click', clearSelectionOnly);
+
+    btnReset.addEventListener('click', () => {
+      if (!loadedImage) return;
+      saveHistory();
+      clearSelectionState();
+      resizeBase(true);
+      setTab('zone');
+      setStatus('Image restaurée depuis l’original. Undo disponible.');
+    });
+
+    function getSelectionBorderPath(mask) {
+      if (!mask) return null;
+      if (selectionBorderPath && selectionBorderMaskRef === mask) return selectionBorderPath;
+
+      const w = baseCanvas.width;
+      const h = baseCanvas.height;
+      const path = new Path2D();
+
+      for (let y = 0; y < h; y++) {
+        const row = y * w;
+        for (let x = 0; x < w; x++) {
+          const idx = row + x;
+          if (mask[idx] !== 1) continue;
+          if (x === 0 || mask[idx - 1] !== 1) { path.moveTo(x, y); path.lineTo(x, y + 1); }
+          if (x === w - 1 || mask[idx + 1] !== 1) { path.moveTo(x + 1, y); path.lineTo(x + 1, y + 1); }
+          if (y === 0 || mask[idx - w] !== 1) { path.moveTo(x, y); path.lineTo(x + 1, y); }
+          if (y === h - 1 || mask[idx + w] !== 1) { path.moveTo(x, y + 1); path.lineTo(x + 1, y + 1); }
+        }
+      }
+
+      selectionBorderPath = path;
+      selectionBorderMaskRef = mask;
+      return path;
+    }
+
+    function drawSelectionBorder(mask) {
+      if (!mask) return;
+      const path = getSelectionBorderPath(mask);
+      if (!path) return;
+
+      const screenFix = 1 / Math.max(zoom, 0.25);
+      ctx.save();
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+
+      // Petit contour sombre derrière pour que le blanc reste lisible sur les images claires.
+      ctx.setLineDash([]);
+      ctx.lineWidth = Math.max(1, 2 * screenFix);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.stroke(path);
+
+      // "Marching ants" : trait blanc pointillé animé, comme dans les logiciels de dessin.
+      ctx.setLineDash([6 * screenFix, 6 * screenFix]);
+      ctx.lineDashOffset = -(antsOffset * screenFix);
+      ctx.lineWidth = Math.max(0.75, 1 * screenFix);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.98)';
+      ctx.stroke(path);
+      ctx.restore();
+    }
+
+    function redraw() {
+      if (!loadedImage) {
+        ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+        return;
+      }
+
+      mainCanvas.width = baseCanvas.width;
+      mainCanvas.height = baseCanvas.height;
+      ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+      ctx.drawImage(baseCanvas, 0, 0);
+
+      if (activeWorkingMask) {
+        const w = baseCanvas.width;
+        const h = baseCanvas.height;
+        const viewData = ctx.createImageData(w, h);
+        for (let i = 0; i < activeWorkingMask.length; i++) {
+          if (activeWorkingMask[i] === 1) {
+            const p = i * 4;
+            viewData.data[p] = 231;
+            viewData.data[p + 1] = 76;
+            viewData.data[p + 2] = 60;
+            viewData.data[p + 3] = 95;
+          }
+        }
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        tempCanvas.getContext('2d').putImageData(viewData, 0, 0);
+        ctx.drawImage(tempCanvas, 0, 0);
+        drawSelectionBorder(activeWorkingMask);
+      }
+
+      canvasContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+      zoomBadge.textContent = `Zoom: ${Math.round(zoom * 100)}%`;
+    }
+
+    function clientToCanvas(clientX, clientY) {
+      const rect = mainCanvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      const x = Math.floor((clientX - rect.left) * (mainCanvas.width / rect.width));
+      const y = Math.floor((clientY - rect.top) * (mainCanvas.height / rect.height));
+      if (x < 0 || y < 0 || x >= baseCanvas.width || y >= baseCanvas.height) return null;
+      return { x, y };
+    }
+
+    function handleActionAt(clientX, clientY) {
+      if (!loadedImage) return;
+      const pos = clientToCanvas(clientX, clientY);
+      if (!pos) return;
+
+      const tol = getTolerance();
+
+      if (currentTab === 'zone' || !isZoneLocked) {
+        primarySelectionMask = globalColorSelection(pos.x, pos.y, tol);
+        activeWorkingMask = primarySelectionMask;
+        isZoneLocked = false;
+        updateLockUi();
+        const selectedCount = countMask(primarySelectionMask);
+        if (selectedCount > 0) {
+          setNavMode(true);
+          setStatus(`Sélection globale par couleur : ${selectedCount} px. Mode Bouger activé automatiquement pour éviter les missclicks.`);
+        } else {
+          setStatus('Aucun pixel trouvé avec cette tolérance.');
+        }
+        redraw();
+        return;
+      }
+
+      const selectedIndex = pos.y * baseCanvas.width + pos.x;
+      if (primarySelectionMask && primarySelectionMask[selectedIndex] !== 1) {
+        setStatus('Couleur ignorée : le point touché est hors de la zone verrouillée.');
+        return;
+      }
+
+      const p = baseCtx.getImageData(pos.x, pos.y, 1, 1).data;
+      currentSelectedRGB = { r: p[0], g: p[1], b: p[2], a: p[3] };
+      runColorSelectionInsideZone();
+      if (activeWorkingMask && countMask(activeWorkingMask) > 0) {
+        setNavMode(true);
+        setStatus(`${countMask(activeWorkingMask)} px trouvés dans la zone verrouillée. Mode Bouger activé automatiquement pour éviter les missclicks.`);
+      }
+    }
+
+    function distanceBetween(a, b) {
+      const dx = b.clientX - a.clientX;
+      const dy = b.clientY - a.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function midpoint(a, b) {
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+    }
+
+    workspace.addEventListener('pointerdown', (e) => {
+      if (!loadedImage) return;
+      e.preventDefault();
+      workspace.setPointerCapture?.(e.pointerId);
+      activePointers.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
+      if (activePointers.size === 2) {
+        const pts = Array.from(activePointers.values());
+        const rect = mainCanvas.getBoundingClientRect();
+        const mid = midpoint(pts[0], pts[1]);
+        pinchStartDistance = distanceBetween(pts[0], pts[1]) || 1;
+        pinchStartZoom = zoom;
+        pinchStartPanX = panX;
+        pinchStartPanY = panY;
+        pinchStartMidX = mid.x;
+        pinchStartMidY = mid.y;
+        pinchStartLayoutLeft = rect.left - panX;
+        pinchStartLayoutTop = rect.top - panY;
+        pinchAnchorLocalX = (mid.x - rect.left) / zoom;
+        pinchAnchorLocalY = (mid.y - rect.top) / zoom;
+        suppressTapUntilAllPointersReleased = true;
+        isPointerDown = false;
+        return;
+      }
+
+      if (isNavMode || e.button === 1 || e.button === 2) {
+        isPointerDown = true;
+        dragStartX = e.clientX - panX;
+        dragStartY = e.clientY - panY;
+      }
+    });
+
+    workspace.addEventListener('pointermove', (e) => {
+      if (!loadedImage || !activePointers.has(e.pointerId)) return;
+      e.preventDefault();
+      activePointers.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
+      if (activePointers.size === 2) {
+        const pts = Array.from(activePointers.values());
+        const dist = distanceBetween(pts[0], pts[1]) || 1;
+        const mid = midpoint(pts[0], pts[1]);
+        zoom = clamp(pinchStartZoom * (dist / pinchStartDistance), 0.25, 32);
+        panX = mid.x - pinchStartLayoutLeft - (pinchAnchorLocalX * zoom);
+        panY = mid.y - pinchStartLayoutTop - (pinchAnchorLocalY * zoom);
+        redraw();
+        return;
+      }
+
+      if (isPointerDown && isNavMode) {
+        panX = e.clientX - dragStartX;
+        panY = e.clientY - dragStartY;
+        redraw();
+      }
+    });
+
+    function finishPointer(e) {
+      if (!loadedImage) return;
+      const wasActionTap = !isNavMode && !suppressTapUntilAllPointersReleased && activePointers.size === 1 && activePointers.has(e.pointerId);
+      activePointers.delete(e.pointerId);
+      workspace.releasePointerCapture?.(e.pointerId);
+
+      if (wasActionTap) handleActionAt(e.clientX, e.clientY);
+      if (activePointers.size === 0) suppressTapUntilAllPointersReleased = false;
+      isPointerDown = false;
+    }
+
+    workspace.addEventListener('pointerup', finishPointer);
+    workspace.addEventListener('pointercancel', (e) => {
+      activePointers.delete(e.pointerId);
+      if (activePointers.size === 0) suppressTapUntilAllPointersReleased = false;
+      isPointerDown = false;
+    });
+
+    workspace.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    function zoomAt(clientX, clientY, nextZoom) {
+      if (!loadedImage) return;
+      const rect = mainCanvas.getBoundingClientRect();
+      const safeZoom = zoom || 1;
+      const layoutLeft = rect.left - panX;
+      const layoutTop = rect.top - panY;
+      const localX = (clientX - rect.left) / safeZoom;
+      const localY = (clientY - rect.top) / safeZoom;
+
+      zoom = clamp(nextZoom, 0.25, 32);
+      panX = clientX - layoutLeft - (localX * zoom);
+      panY = clientY - layoutTop - (localY * zoom);
+      redraw();
+    }
+
+    workspace.addEventListener('wheel', (e) => {
+      if (!loadedImage) return;
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 0.88;
+      zoomAt(e.clientX, e.clientY, zoom * factor);
+    }, { passive: false });
+
+    setInterval(() => {
+      if (!loadedImage || !activeWorkingMask) return;
+      antsOffset = (antsOffset + 1) % 8;
+      redraw();
+    }, 120);
+
+    function resizeBase(fromOriginal = false) {
+      if (!loadedImage) return;
+      const tx = clamp(parseInt(sizeXInput.value, 10) || loadedImage.width, 1, 8192);
+      const ty = clamp(parseInt(sizeYInput.value, 10) || loadedImage.height, 1, 8192);
+      sizeXInput.value = tx;
+      sizeYInput.value = ty;
+      baseCanvas.width = tx;
+      baseCanvas.height = ty;
+      baseCtx.clearRect(0, 0, tx, ty);
+      baseCtx.drawImage(loadedImage, 0, 0, tx, ty);
+      if (!fromOriginal) {
+        primarySelectionMask = null;
+        activeWorkingMask = null;
+        selectionBorderPath = null;
+        selectionBorderMaskRef = null;
+        currentSelectedRGB = null;
+        isZoneLocked = false;
+        updateLockUi();
+      }
+      redraw();
+    }
+
+    sizeXInput.addEventListener('change', () => {
+      if (!loadedImage) return;
+      sizeYInput.value = Math.max(1, Math.round((parseInt(sizeXInput.value, 10) || loadedImage.width) / originalRatio));
+      saveHistory();
+      resizeBase(false);
+      setStatus('Image redimensionnée depuis l’original. Undo disponible.');
+    });
+
+    sizeYInput.addEventListener('change', () => {
+      if (!loadedImage) return;
+      sizeXInput.value = Math.max(1, Math.round((parseInt(sizeYInput.value, 10) || loadedImage.height) * originalRatio));
+      saveHistory();
+      resizeBase(false);
+      setStatus('Image redimensionnée depuis l’original. Undo disponible.');
+    });
+
+    imageLoader.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedImage = img;
+          originalRatio = img.width / img.height;
+          sizeXInput.value = img.width;
+          sizeYInput.value = img.height;
+          zoom = 1;
+          panX = 0;
+          panY = 0;
+          primarySelectionMask = null;
+          activeWorkingMask = null;
+          currentSelectedRGB = null;
+          isZoneLocked = false;
+          updateLockUi();
+          clearHistory();
+          resizeBase(false);
+          setTab('zone');
+          setNavMode(false);
+          setStatus(`Image chargée : ${img.width} × ${img.height}.`);
+        };
+        img.onerror = () => setStatus('Erreur : image impossible à ouvrir.');
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function isImageFile(file) {
+      return file && file.type && file.type.startsWith('image/');
+    }
+
+    function outputPngName(inputName) {
+      const clean = inputName || 'image.png';
+      return clean.replace(/\.[^.]+$/, '') + '.png';
+    }
+
+    function loadBatchImage(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error(`Image impossible à lire: ${file.name}`));
+        };
+        img.src = url;
+      });
+    }
+
+    function blobFromCanvas(canvas) {
+      return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'));
+    }
+
+    function growMask(mask, w, h, steps = 2) {
+      let src = mask;
+      for (let step = 0; step < steps; step++) {
+        const dest = new Uint8Array(w * h);
+        for (let y = 0; y < h; y++) {
+          const row = y * w;
+          for (let x = 0; x < w; x++) {
+            const idx = row + x;
+            if (src[idx] ||
+                (x > 0 && src[idx - 1]) ||
+                (x < w - 1 && src[idx + 1]) ||
+                (y > 0 && src[idx - w]) ||
+                (y < h - 1 && src[idx + w])) {
+              dest[idx] = 1;
+            }
+          }
+        }
+        src = dest;
+      }
+      return src;
+    }
+
+    async function processBatchImage(file) {
+      const img = await loadBatchImage(file);
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const work = document.createElement('canvas');
+      work.width = w;
+      work.height = h;
+      const wctx = work.getContext('2d', { willReadFrequently: true });
+      wctx.clearRect(0, 0, w, h);
+      wctx.drawImage(img, 0, 0, w, h);
+
+      // Point sûr demandé: coin haut gauche, décalé de 5 px vers l'intérieur.
+      const sampleX = Math.min(5, Math.max(0, w - 1));
+      const sampleY = Math.min(5, Math.max(0, h - 1));
+      const sample = wctx.getImageData(sampleX, sampleY, 1, 1).data;
+      const target = { r: sample[0], g: sample[1], b: sample[2], a: sample[3] };
+      // Batch auto: tolérance fixe demandée à 120, indépendante du slider manuel.
+      const tol = BATCH_AUTO_TOLERANCE;
+
+      const imgData = wctx.getImageData(0, 0, w, h);
+      let mask = new Uint8Array(w * h);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const idx = i / 4;
+        if (pixelMatches(imgData.data, i, target, tol)) mask[idx] = 1;
+      }
+
+      // Gonflage fixe demandé: 2 px.
+      mask = growMask(mask, w, h, 2);
+      let changed = 0;
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const idx = i / 4;
+        if (mask[idx] !== 1) continue;
+
+        // Suppression de la sélection + luminance minimum black sur les RGB.
+        // Résultat: pixels transparents sans halo magenta/rose dans les canaux RGB.
+        imgData.data[i] = 0;
+        imgData.data[i + 1] = 0;
+        imgData.data[i + 2] = 0;
+        imgData.data[i + 3] = 0;
+        changed++;
+      }
+
+      wctx.putImageData(imgData, 0, 0);
+      const blob = await blobFromCanvas(work);
+      return { blob, changed, width: w, height: h, sample: target };
+    }
+
+    async function runBatchWithDirectoryPicker() {
+      if (!('showDirectoryPicker' in window)) return false;
+
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      const outDir = await dirHandle.getDirectoryHandle('maskless', { create: true });
+      const entries = [];
+
+      for await (const [name, handle] of dirHandle.entries()) {
+        if (handle.kind !== 'file') continue;
+        const file = await handle.getFile();
+        if (isImageFile(file)) entries.push({ name, file });
+      }
+
+      if (entries.length === 0) {
+        setStatus('Aucune image trouvée dans ce dossier.');
+        return true;
+      }
+
+      let done = 0;
+      btnBatchAuto.disabled = true;
+      btnBatchAuto.textContent = '⏳ Auto...';
+      try {
+        for (const entry of entries) {
+          done++;
+          setStatus(`Auto ${done}/${entries.length} : ${entry.file.name} (tolérance 120, sample 5x5, gonflage 2 px)`);
+          const result = await processBatchImage(entry.file);
+          const outName = outputPngName(entry.file.name);
+          const outFile = await outDir.getFileHandle(outName, { create: true });
+          const writable = await outFile.createWritable();
+          await writable.write(result.blob);
+          await writable.close();
+          setStatus(`Auto ${done}/${entries.length} : ${outName} exporté dans maskless, ${result.changed} px supprimés/noircis.`);
+        }
+        setStatus(`Batch terminé : ${entries.length} image(s) exportée(s) dans le sous-dossier maskless.`);
+      } finally {
+        btnBatchAuto.disabled = false;
+        btnBatchAuto.textContent = '🤖 Auto dossier';
+      }
+
+      return true;
+    }
+
+    async function runBatchWithFallbackFiles(files) {
+      const list = Array.from(files || []).filter(isImageFile);
+      if (list.length === 0) {
+        setStatus('Aucune image sélectionnée.');
+        return;
+      }
+
+      btnBatchAuto.disabled = true;
+      btnBatchAuto.textContent = '⏳ Auto...';
+      try {
+        for (let i = 0; i < list.length; i++) {
+          const file = list[i];
+          setStatus(`Auto fallback ${i + 1}/${list.length} : ${file.name} (tolérance 120, sample 5x5, gonflage 2 px)`);
+          const result = await processBatchImage(file);
+          const url = URL.createObjectURL(result.blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `maskless_${outputPngName(file.name)}`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1500);
+          await new Promise((resolve) => setTimeout(resolve, 180));
+        }
+        setStatus('Batch fallback terminé. Le navigateur a téléchargé les images une par une.');
+      } finally {
+        btnBatchAuto.disabled = false;
+        btnBatchAuto.textContent = '🤖 Auto dossier';
+      }
+    }
+
+    btnBatchAuto.addEventListener('click', async () => {
+      try {
+        const usedDirectoryPicker = await runBatchWithDirectoryPicker();
+        if (!usedDirectoryPicker) {
+          setStatus('Ce navigateur ne peut pas écrire dans un sous-dossier. Fallback: sélection multiple + téléchargements.');
+          batchFolderInput.click();
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          setStatus('Batch annulé.');
+          return;
+        }
+        console.error(err);
+        setStatus(`Erreur batch : ${err && err.message ? err.message : err}`);
+      }
+    });
+
+    batchFolderInput.addEventListener('change', async (e) => {
+      await runBatchWithFallbackFiles(e.target.files);
+      batchFolderInput.value = '';
+    });
+
+    function exportCleanCanvas() {
+      return new Promise((resolve) => {
+        baseCanvas.toBlob((blob) => resolve(blob), 'image/png');
+      });
+    }
+
+    btnExport.addEventListener('click', async () => {
+      if (!loadedImage) {
+        setStatus('Aucune image à exporter.');
+        return;
+      }
+
+      const blob = await exportCleanCanvas();
+      if (!blob) {
+        setStatus('Erreur export PNG.');
+        return;
+      }
+
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: 'image_mask_removed.png',
+            types: [{ description: 'Image PNG', accept: { 'image/png': ['.png'] } }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          setStatus('PNG exporté.');
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          console.error(err);
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'image_mask_removed.png';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setStatus('Téléchargement PNG lancé.');
+    });
+
+    async function toggleFullscreen() {
+      try {
+        const doc = document;
+        const root = document.documentElement;
+        if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+          const request = root.requestFullscreen || root.webkitRequestFullscreen;
+          if (request) await request.call(root);
+        } else {
+          const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+          if (exit) await exit.call(doc);
+        }
+      } catch (err) {
+        console.warn(err);
+        setStatus('Plein écran non autorisé par ce navigateur.');
+      }
+    }
+
+    btnFullscreen.addEventListener('click', toggleFullscreen);
+
+    document.addEventListener('fullscreenchange', () => {
+      btnFullscreen.textContent = document.fullscreenElement ? '⛶ Quitter' : '⛶ Plein';
+      setTimeout(redraw, 100);
+    });
+
+    document.addEventListener('webkitfullscreenchange', () => {
+      btnFullscreen.textContent = document.webkitFullscreenElement ? '⛶ Quitter' : '⛶ Plein';
+      setTimeout(redraw, 100);
+    });
+  </script>
+</body>
+</html>

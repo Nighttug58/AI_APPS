@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>SpriteSheet Extractor Props v4.1 JSON FIX</title>
+  <style>
+    :root {
+      --bg: #111214;
+      --panel: #1c1d20;
+      --panel2: #17181b;
+      --line: #30333a;
+      --text: #eceff4;
+      --muted: #a9b1bc;
+      --accent: #3498db;
+      --green: #2ecc71;
+      --yellow: #f1c40f;
+      --red: #e74c3c;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body { min-height: 100dvh; overflow: hidden; }
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 420px;
+      height: 100dvh;
+    }
+    .viewer {
+      position: relative;
+      overflow: auto;
+      padding: 16px;
+      background:
+        linear-gradient(45deg, #1b1c1f 25%, transparent 25%),
+        linear-gradient(-45deg, #1b1c1f 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1b1c1f 75%),
+        linear-gradient(-45deg, transparent 75%, #1b1c1f 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    .canvas-wrap {
+      position: relative;
+      display: inline-block;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+      margin: 0 auto;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      max-width: 100%;
+      height: auto;
+      background: transparent;
+    }
+    #overlayCanvas {
+      position: absolute; left: 0; top: 0; pointer-events: none;
+    }
+    .sidebar {
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .scroll {
+      overflow: auto;
+      min-height: 0;
+      flex: 1;
+    }
+    .section {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+    }
+    .row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .row:last-child { margin-bottom: 0; }
+    .grow { flex: 1; min-width: 0; }
+    .label {
+      min-width: 98px; font-size: 12px; color: var(--muted);
+    }
+    .btn, .file-label, select, input[type="number"], input[type="text"], textarea, input[type="range"] {
+      border: 1px solid #3a3f49; border-radius: 8px; font-size: 13px;
+    }
+    .btn, .file-label {
+      background: #2f343d; color: white; padding: 9px 12px; font-weight: 700; cursor: pointer; text-align: center; user-select: none;
+    }
+    .btn:hover, .file-label:hover { filter: brightness(1.08); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(1); }
+    .btn-accent { background: var(--accent); }
+    .btn-green { background: var(--green); }
+    .btn-yellow { background: #8f7307; }
+    .btn-red { background: var(--red); }
+    select, input[type="number"], input[type="text"], textarea {
+      width: 100%; min-width: 0; padding: 8px 10px; background: #101114; color: white;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .pill {
+      display: inline-block; padding: 5px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      background: #101114; border: 1px solid #383c45; color: var(--muted);
+    }
+    .status {
+      font-size: 12px; color: var(--muted); line-height: 1.35; min-height: 18px;
+    }
+    .small { font-size: 11px; color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .card {
+      background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+      text-align: center;
+    }
+    .card .big { font-size: 18px; font-weight: 800; }
+    .card .small { margin-top: 3px; }
+    .preview {
+      display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: start;
+    }
+    .preview canvas {
+      width: 120px; height: 120px; border: 1px solid var(--line);
+      background:
+        linear-gradient(45deg, #1b1c1f 25%, transparent 25%),
+        linear-gradient(-45deg, #1b1c1f 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1b1c1f 75%),
+        linear-gradient(-45deg, transparent 75%, #1b1c1f 75%);
+      background-size: 12px 12px;
+      background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+    }
+    .list-head {
+      display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; padding: 8px 10px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; background: var(--panel); z-index: 2;
+    }
+    .sprite-list { background: var(--panel2); }
+    .sprite-item {
+      display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; align-items: center;
+      padding: 8px 10px; border-bottom: 1px solid #262a31; cursor: pointer;
+    }
+    .sprite-item:hover { background: #20242b; }
+    .sprite-item.active { background: #293846; }
+    .thumb {
+      width: 54px; height: 54px; border: 1px solid #353a42; display:flex; align-items:center; justify-content:center; overflow:hidden;
+      background:
+        linear-gradient(45deg, #1b1c1f 25%, transparent 25%),
+        linear-gradient(-45deg, #1b1c1f 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1b1c1f 75%),
+        linear-gradient(-45deg, transparent 75%, #1b1c1f 75%);
+      background-size: 10px 10px;
+      background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+    }
+    .thumb img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+    .warning { font-size: 12px; color: #f9dd82; }
+    .name-grid-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #111317;
+      max-height: 260px;
+    }
+    .name-grid {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .name-grid th,
+    .name-grid td {
+      border: 1px solid #2c3139;
+      padding: 6px;
+      vertical-align: middle;
+    }
+    .name-grid th {
+      background: #1a1d22;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .name-grid .row-head {
+      position: sticky;
+      left: 0;
+      background: #1a1d22;
+      z-index: 1;
+      min-width: 48px;
+      text-align: center;
+    }
+    .name-grid input,
+    .name-grid select {
+      width: 100%;
+      min-width: 0;
+      padding: 7px 8px;
+      border-radius: 6px;
+      border: 1px solid #414754;
+      background: #0f1013;
+      color: white;
+      font-size: 12px;
+    }
+    .meta-cell {
+      display: grid;
+      gap: 4px;
+      min-width: 170px;
+    }
+    .meta-mini-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+    .meta-cell .cell-caption {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.1;
+    }
+    .disabled-cell {
+      background: #14161a;
+      opacity: 0.45;
+      min-width: 170px;
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 11px;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px dashed #363b45;
+      padding: 8px;
+    }
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-left: none; border-top: 1px solid var(--line); height: 52dvh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="viewer">
+      <div class="canvas-wrap">
+        <canvas id="sourceCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="scroll">
+        <div class="section">
+          <h3>1. Charger la spritesheet</h3>
+          <div class="row">
+            <label class="file-label grow">
+              📁 Ouvrir une spritesheet
+              <input type="file" id="imageLoader" accept="image/*" hidden />
+            </label>
+          </div>
+          <div class="status" id="imageInfo">Aucune image chargée.</div>
+        </div>
+
+        <div class="section">
+          <h3>2. Détection des sprites</h3>
+          <div class="row">
+            <span class="label">Fond</span>
+            <select id="bgMode" class="grow">
+              <option value="corners">Auto (coins)</option>
+              <option value="transparent">Transparent uniquement</option>
+              <option value="picked">Couleur choisie</option>
+            </select>
+          </div>
+          <div class="row">
+            <span class="label">Tolérance</span>
+            <input type="range" id="tolerance" min="0" max="255" value="20" class="grow" />
+            <span class="pill" id="tolVal">20</span>
+          </div>
+          <div class="row">
+            <span class="label">Seuil alpha</span>
+            <input type="range" id="alphaThreshold" min="0" max="254" value="1" class="grow" />
+            <span class="pill" id="alphaVal">1</span>
+          </div>
+          <div class="row">
+            <span class="label">Padding</span>
+            <input type="number" id="padding" min="0" max="128" value="1" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Min pixels</span>
+            <input type="number" id="minPixels" min="1" max="999999" value="4" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Fusion gap</span>
+            <input type="number" id="mergeGap" min="0" max="128" value="1" class="grow" />
+          </div>
+          <div class="row">
+            <button id="btnPickBg" class="btn btn-yellow grow" type="button">🎯 Choisir fond</button>
+            <button id="btnAnalyze" class="btn btn-accent grow" type="button">🔎 Détecter</button>
+          </div>
+          <div class="warning" id="pickHint"></div>
+          <div class="status" id="analyzeStatus">Charge une image puis lance la détection.</div>
+        </div>
+
+        <div class="section">
+          <h3>3. Regroupement rangées / colonnes</h3>
+          <div class="row">
+            <span class="label">Seuil rangée</span>
+            <input type="number" id="rowThreshold" min="0" max="256" value="12" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Nommage</span>
+            <select id="namingMode" class="grow">
+              <option value="table" selected>Tableau personnalisé (props)</option>
+              <option value="generic">Base_001</option>
+              <option value="rowindex">row01_001</option>
+              <option value="rownames">rowName_001</option>
+            </select>
+          </div>
+          <div class="row">
+            <span class="label">Nom de base</span>
+            <input type="text" id="baseName" value="sprite" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label" style="align-self:flex-start; padding-top:8px;">Noms rangées</span>
+            <textarea id="rowNames" class="grow" placeholder="Ex: weapons, gems, potions"></textarea>
+          </div>
+          <div class="small">Mode props conseillé : utilise le mode “Tableau personnalisé” puis génère le tableau avec le nombre de rangées et colonnes détecté. Chaque case servira de nom final.</div>
+        </div>
+
+        <div class="section">
+          <h3>Stats</h3>
+          <div class="stats-grid">
+            <div class="card"><div class="big" id="statSprites">0</div><div class="small">Sprites</div></div>
+            <div class="card"><div class="big" id="statRows">0</div><div class="small">Rangées</div></div>
+            <div class="card"><div class="big" id="statCols">0</div><div class="small">Cols max</div></div>
+          </div>
+          <div class="status" id="groupStatus">Pas encore d’analyse.</div>
+        </div>
+
+        <div class="section">
+          <h3>4. Tableau de noms final</h3>
+          <div class="row">
+            <button id="btnFillDetectedTable" class="btn btn-accent grow" type="button" disabled>🧩 Remplir tableau nb x nb détecté</button>
+            <button id="btnClearNameTable" class="btn grow" type="button">🧹 Vider tableau</button>
+          </div>
+          <div class="status" id="nameTableStatus">Après détection, tu pourras générer un tableau avec le nombre de rangées et colonnes détecté.</div>
+          <div class="name-grid-wrap" id="nameGridWrap"></div>
+          <div class="small">Chaque case correspond à une position détectée : rangée / colonne. Si une case est remplie, son texte devient le nom final du sprite exporté.</div>
+        </div>
+
+        <div class="section">
+          <h3>5. JSON manifest</h3>
+          <div class="row">
+            <span class="label">Manifest ID</span>
+            <input type="text" id="manifestId" value="props_manifest" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Version</span>
+            <input type="number" id="manifestVersion" value="1" min="1" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Image</span>
+            <input type="text" id="imageRef" value="props.png" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Cell size</span>
+            <input type="number" id="cellSize" value="128" min="1" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Default layer</span>
+            <input type="text" id="defaultLayer" value="base" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Default cat.</span>
+            <input type="text" id="defaultCategory" value="prop" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Default coll.</span>
+            <input type="text" id="defaultCollision" value="none" class="grow" />
+          </div>
+          <div class="row">
+            <span class="label">Default anchor</span>
+            <input type="text" id="defaultAnchor" value="bottom-center" class="grow" />
+          </div>
+          <div class="small">Le JSON utilise la grille détectée : x et y sont calculés par rangée/colonne selon le <strong>cellSize</strong>. Les champs vides dans le tableau reprennent les valeurs par défaut ci-dessus.</div>
+        </div>
+
+        <div class="section">
+          <h3>6. Prévisualisation</h3>
+          <div class="preview">
+            <canvas id="previewCanvas" width="120" height="120"></canvas>
+            <div>
+              <div class="status" id="previewInfo">Aucun sprite sélectionné.</div>
+              <div class="small mono" id="bboxInfo">—</div>
+              <div class="small mono" id="nameInfo">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>7. Export</h3>
+          <div class="row">
+            <button id="btnExportJson" class="btn btn-yellow grow" type="button" disabled>🧾 Export JSON</button>
+            <button id="btnExportSelected" class="btn grow" type="button" disabled>💾 Export sélection</button>
+          </div>
+          <div class="row">
+            <button id="btnExportAll" class="btn btn-green grow" type="button" disabled>📦 Export tout</button>
+          </div>
+          <div class="status" id="exportStatus">Aucun sprite prêt à exporter.</div>
+        </div>
+
+        <div class="section" style="padding-bottom:8px;">
+          <h3 style="margin-bottom:0;">Liste des sprites</h3>
+        </div>
+        <div class="list-head">
+          <div>Thumb</div>
+          <div>Sprite</div>
+          <div>Row/Col</div>
+        </div>
+        <div class="sprite-list" id="spriteList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    const imageLoader = document.getElementById('imageLoader');
+    const sourceCanvas = document.getElementById('sourceCanvas');
+    const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    const overlayCtx = overlayCanvas.getContext('2d');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewCtx = previewCanvas.getContext('2d');
+
+    const imageInfo = document.getElementById('imageInfo');
+    const analyzeStatus = document.getElementById('analyzeStatus');
+    const groupStatus = document.getElementById('groupStatus');
+    const exportStatus = document.getElementById('exportStatus');
+    const nameTableStatus = document.getElementById('nameTableStatus');
+    const nameGridWrap = document.getElementById('nameGridWrap');
+    const manifestIdInput = document.getElementById('manifestId');
+    const manifestVersionInput = document.getElementById('manifestVersion');
+    const imageRefInput = document.getElementById('imageRef');
+    const cellSizeInput = document.getElementById('cellSize');
+    const defaultLayerInput = document.getElementById('defaultLayer');
+    const defaultCategoryInput = document.getElementById('defaultCategory');
+    const defaultCollisionInput = document.getElementById('defaultCollision');
+    const defaultAnchorInput = document.getElementById('defaultAnchor');
+    const previewInfo = document.getElementById('previewInfo');
+    const bboxInfo = document.getElementById('bboxInfo');
+    const nameInfo = document.getElementById('nameInfo');
+    const spriteList = document.getElementById('spriteList');
+    const pickHint = document.getElementById('pickHint');
+
+    const statSprites = document.getElementById('statSprites');
+    const statRows = document.getElementById('statRows');
+    const statCols = document.getElementById('statCols');
+
+    const bgMode = document.getElementById('bgMode');
+    const tolerance = document.getElementById('tolerance');
+    const alphaThreshold = document.getElementById('alphaThreshold');
+    const tolVal = document.getElementById('tolVal');
+    const alphaVal = document.getElementById('alphaVal');
+    const paddingInput = document.getElementById('padding');
+    const minPixelsInput = document.getElementById('minPixels');
+    const mergeGapInput = document.getElementById('mergeGap');
+    const rowThresholdInput = document.getElementById('rowThreshold');
+    const namingMode = document.getElementById('namingMode');
+    const baseNameInput = document.getElementById('baseName');
+    const rowNamesInput = document.getElementById('rowNames');
+
+    const btnPickBg = document.getElementById('btnPickBg');
+    const btnAnalyze = document.getElementById('btnAnalyze');
+    const btnFillDetectedTable = document.getElementById('btnFillDetectedTable');
+    const btnClearNameTable = document.getElementById('btnClearNameTable');
+    const btnExportJson = document.getElementById('btnExportJson');
+    const btnExportSelected = document.getElementById('btnExportSelected');
+    const btnExportAll = document.getElementById('btnExportAll');
+
+    let loadedImage = null;
+    let imageData = null;
+    let detections = [];
+    let selectedIndex = -1;
+    let pickedBgColor = null;
+    let pickBgArmed = false;
+    let antsOffset = 0;
+    let detectedRowsCount = 0;
+    let detectedColsCount = 0;
+
+    tolVal.textContent = tolerance.value;
+    alphaVal.textContent = alphaThreshold.value;
+    tolerance.addEventListener('input', () => tolVal.textContent = tolerance.value);
+    alphaThreshold.addEventListener('input', () => alphaVal.textContent = alphaThreshold.value);
+
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function setText(el, t) { el.textContent = t; }
+    function safeBaseName(v) {
+      return (v || 'sprite').trim().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_') || 'sprite';
+    }
+    function safeRowName(v, index) {
+      const clean = (v || '').trim().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_');
+      return clean || `row${String(index + 1).padStart(2, '0')}`;
+    }
+    function rgbaToText(c) { return c ? `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})` : '—'; }
+
+    function updateButtons() {
+      const has = detections.length > 0;
+      btnExportJson.disabled = !has;
+      btnExportAll.disabled = !has;
+      btnExportSelected.disabled = !(has && selectedIndex >= 0 && selectedIndex < detections.length);
+    }
+
+    function resetPreview() {
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      setText(previewInfo, 'Aucun sprite sélectionné.');
+      bboxInfo.textContent = '—';
+      nameInfo.textContent = '—';
+    }
+
+    function clearDetections() {
+      detections = [];
+      selectedIndex = -1;
+      detectedRowsCount = 0;
+      detectedColsCount = 0;
+      spriteList.innerHTML = '';
+      statSprites.textContent = '0';
+      statRows.textContent = '0';
+      statCols.textContent = '0';
+      groupStatus.textContent = 'Pas encore d’analyse.';
+      nameTableStatus.textContent = 'Après détection, tu pourras générer un tableau avec le nombre de rangées et colonnes détecté.';
+      btnFillDetectedTable.disabled = true;
+      resetPreview();
+      redrawOverlay();
+      updateButtons();
+    }
+
+    function colorDistance(r1, g1, b1, r2, g2, b2) {
+      return Math.max(Math.abs(r1 - r2), Math.abs(g1 - g2), Math.abs(b1 - b2));
+    }
+
+    function getPixel(data, w, x, y) {
+      const i = (y * w + x) * 4;
+      return { r: data[i], g: data[i + 1], b: data[i + 2], a: data[i + 3] };
+    }
+
+    function getBackgroundSamples(data, w, h) {
+      return [
+        getPixel(data, w, 0, 0),
+        getPixel(data, w, w - 1, 0),
+        getPixel(data, w, 0, h - 1),
+        getPixel(data, w, w - 1, h - 1)
+      ];
+    }
+
+    function isBackgroundPixel(data, offset, bgConfig) {
+      const a = data[offset + 3];
+      const alphaCut = clamp(parseInt(alphaThreshold.value, 10) || 0, 0, 254);
+      if (a <= alphaCut) return true;
+      if (bgConfig.mode === 'transparent') return false;
+      const tol = clamp(parseInt(tolerance.value, 10) || 0, 0, 255);
+      const r = data[offset], g = data[offset + 1], b = data[offset + 2];
+      for (const ref of bgConfig.refs) {
+        if (colorDistance(r, g, b, ref.r, ref.g, ref.b) <= tol) return true;
+      }
+      return false;
+    }
+
+    function createForegroundMask() {
+      if (!imageData) return null;
+      const w = sourceCanvas.width;
+      const h = sourceCanvas.height;
+      const data = imageData.data;
+      let bgConfig;
+      if (bgMode.value === 'transparent') {
+        bgConfig = { mode: 'transparent', refs: [] };
+      } else if (bgMode.value === 'picked') {
+        if (!pickedBgColor) throw new Error('Choisis d’abord une couleur de fond.');
+        bgConfig = { mode: 'picked', refs: [pickedBgColor] };
+      } else {
+        bgConfig = { mode: 'corners', refs: getBackgroundSamples(data, w, h) };
+      }
+
+      const mask = new Uint8Array(w * h);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          mask[idx] = isBackgroundPixel(data, idx * 4, bgConfig) ? 0 : 1;
+        }
+      }
+      return mask;
+    }
+
+    function detectComponents(mask) {
+      const w = sourceCanvas.width;
+      const h = sourceCanvas.height;
+      const visited = new Uint8Array(mask.length);
+      const minPixels = Math.max(1, parseInt(minPixelsInput.value, 10) || 1);
+      const qx = new Int32Array(mask.length);
+      const qy = new Int32Array(mask.length);
+      const out = [];
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const start = y * w + x;
+          if (mask[start] !== 1 || visited[start]) continue;
+          let head = 0, tail = 0;
+          qx[tail] = x; qy[tail] = y; tail++;
+          visited[start] = 1;
+
+          let minX = x, minY = y, maxX = x, maxY = y, pixels = 0;
+
+          while (head < tail) {
+            const cx = qx[head];
+            const cy = qy[head];
+            head++;
+            pixels++;
+            if (cx < minX) minX = cx;
+            if (cy < minY) minY = cy;
+            if (cx > maxX) maxX = cx;
+            if (cy > maxY) maxY = cy;
+
+            for (let ny = cy - 1; ny <= cy + 1; ny++) {
+              if (ny < 0 || ny >= h) continue;
+              for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                if (nx < 0 || nx >= w) continue;
+                if (nx === cx && ny === cy) continue;
+                const n = ny * w + nx;
+                if (mask[n] !== 1 || visited[n]) continue;
+                visited[n] = 1;
+                qx[tail] = nx; qy[tail] = ny; tail++;
+              }
+            }
+          }
+          if (pixels >= minPixels) out.push({ minX, minY, maxX, maxY, pixels });
+        }
+      }
+      return out;
+    }
+
+    function boxesTouchOrNear(a, b, gap) {
+      return !(a.maxX + gap < b.minX || b.maxX + gap < a.minX || a.maxY + gap < b.minY || b.maxY + gap < a.minY);
+    }
+
+    function mergeComponents(components) {
+      const gap = Math.max(0, parseInt(mergeGapInput.value, 10) || 0);
+      let groups = components.map(c => ({ ...c }));
+      let changed = true;
+      while (changed) {
+        changed = false;
+        outer:
+        for (let i = 0; i < groups.length; i++) {
+          for (let j = i + 1; j < groups.length; j++) {
+            if (boxesTouchOrNear(groups[i], groups[j], gap)) {
+              groups[i] = {
+                minX: Math.min(groups[i].minX, groups[j].minX),
+                minY: Math.min(groups[i].minY, groups[j].minY),
+                maxX: Math.max(groups[i].maxX, groups[j].maxX),
+                maxY: Math.max(groups[i].maxY, groups[j].maxY),
+                pixels: groups[i].pixels + groups[j].pixels
+              };
+              groups.splice(j, 1);
+              changed = true;
+              break outer;
+            }
+          }
+        }
+      }
+      return groups;
+    }
+
+    function cropSprite(box, mask) {
+      const pad = Math.max(0, parseInt(paddingInput.value, 10) || 0);
+      const sw = sourceCanvas.width;
+      const sh = sourceCanvas.height;
+      const x0 = clamp(box.minX - pad, 0, sw - 1);
+      const y0 = clamp(box.minY - pad, 0, sh - 1);
+      const x1 = clamp(box.maxX + pad, 0, sw - 1);
+      const y1 = clamp(box.maxY + pad, 0, sh - 1);
+      const w = x1 - x0 + 1;
+      const h = y1 - y0 + 1;
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = w;
+      outCanvas.height = h;
+      const outCtx = outCanvas.getContext('2d', { willReadFrequently: true });
+      const out = outCtx.createImageData(w, h);
+      const src = imageData.data;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const srcIdx = y * sw + x;
+          if (mask[srcIdx] !== 1) continue;
+          const si = srcIdx * 4;
+          const dx = x - x0;
+          const dy = y - y0;
+          const di = (dy * w + dx) * 4;
+          out.data[di] = src[si];
+          out.data[di + 1] = src[si + 1];
+          out.data[di + 2] = src[si + 2];
+          out.data[di + 3] = src[si + 3];
+        }
+      }
+      outCtx.putImageData(out, 0, 0);
+      return { canvas: outCanvas, x: x0, y: y0, width: w, height: h };
+    }
+
+    function sortBase(list) {
+      return list.sort((a, b) => a.minY - b.minY || a.minX - b.minX);
+    }
+
+    function assignRowsAndCols(items) {
+      const threshold = Math.max(0, parseInt(rowThresholdInput.value, 10) || 0);
+      const sorted = sortBase(items.slice());
+      const rows = [];
+
+      for (const item of sorted) {
+        const centerY = (item.minY + item.maxY) / 2;
+        let found = null;
+        for (const row of rows) {
+          if (Math.abs(centerY - row.avgCenterY) <= threshold) {
+            found = row;
+            break;
+          }
+        }
+        if (!found) {
+          found = { items: [], avgCenterY: centerY };
+          rows.push(found);
+        }
+        found.items.push(item);
+        found.avgCenterY = found.items.reduce((s, d) => s + ((d.minY + d.maxY) / 2), 0) / found.items.length;
+      }
+
+      rows.sort((a, b) => a.avgCenterY - b.avgCenterY);
+      let maxCols = 0;
+      rows.forEach((row, rowIndex) => {
+        row.items.sort((a, b) => a.minX - b.minX || a.minY - b.minY);
+        maxCols = Math.max(maxCols, row.items.length);
+        row.items.forEach((item, colIndex) => {
+          item.rowIndex = rowIndex;
+          item.colIndex = colIndex;
+          item.rowCount = row.items.length;
+        });
+      });
+
+      const flat = rows.flatMap(r => r.items);
+      flat.sort((a, b) => a.rowIndex - b.rowIndex || a.colIndex - b.colIndex);
+      flat.forEach((item, i) => item.globalIndex = i);
+
+      return { list: flat, rows, maxCols };
+    }
+
+    function clearNameTable() {
+      nameGridWrap.innerHTML = '';
+    }
+
+    function getDetectionMap() {
+      const map = {};
+      detections.forEach(det => {
+        map[`${det.rowIndex}_${det.colIndex}`] = det;
+      });
+      return map;
+    }
+
+    function getCurrentNameTableValues() {
+      const values = {};
+      nameGridWrap.querySelectorAll('[data-row][data-col][data-field]').forEach(input => {
+        const key = `${input.dataset.row}_${input.dataset.col}`;
+        values[key] = values[key] || {};
+        values[key][input.dataset.field] = input.value;
+      });
+      return values;
+    }
+
+    function createMetaInput(field, row, col, placeholder, value = '') {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.dataset.row = String(row);
+      input.dataset.col = String(col);
+      input.dataset.field = field;
+      input.placeholder = placeholder;
+      input.value = value || '';
+      return input;
+    }
+
+    function createMetaSelect(field, row, col, options, value = '') {
+      const select = document.createElement('select');
+      select.dataset.row = String(row);
+      select.dataset.col = String(col);
+      select.dataset.field = field;
+      options.forEach(optVal => {
+        const opt = document.createElement('option');
+        opt.value = optVal;
+        opt.textContent = optVal;
+        select.appendChild(opt);
+      });
+      if (value && options.includes(value)) {
+        select.value = value;
+      } else if (value && !options.includes(value)) {
+        const custom = document.createElement('option');
+        custom.value = value;
+        custom.textContent = value;
+        select.appendChild(custom);
+        select.value = value;
+      }
+      return select;
+    }
+
+    function buildDetectedNameTable(rows, cols, preserve = true) {
+      detectedRowsCount = rows;
+      detectedColsCount = cols;
+      const oldValues = preserve ? getCurrentNameTableValues() : {};
+      const detectionMap = getDetectionMap();
+      nameGridWrap.innerHTML = '';
+      if (!rows || !cols) {
+        nameTableStatus.textContent = 'Aucune dimension détectée pour générer le tableau.';
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = 'name-grid';
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      const corner = document.createElement('th');
+      corner.textContent = 'R/C';
+      trh.appendChild(corner);
+      for (let c = 0; c < cols; c++) {
+        const th = document.createElement('th');
+        th.textContent = `C${c + 1}`;
+        trh.appendChild(th);
+      }
+      thead.appendChild(trh);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      for (let r = 0; r < rows; r++) {
+        const tr = document.createElement('tr');
+        const rowHead = document.createElement('th');
+        rowHead.className = 'row-head';
+        rowHead.textContent = `R${r + 1}`;
+        tr.appendChild(rowHead);
+
+        for (let c = 0; c < cols; c++) {
+          const td = document.createElement('td');
+          const key = `${r}_${c}`;
+          const prev = oldValues[key] || {};
+          const det = detectionMap[key];
+
+          if (!det) {
+            const empty = document.createElement('div');
+            empty.className = 'disabled-cell';
+            empty.textContent = 'Aucun sprite détecté dans cette case';
+            td.appendChild(empty);
+            tr.appendChild(td);
+            continue;
+          }
+
+          const wrap = document.createElement('div');
+          wrap.className = 'meta-cell';
+
+          const cap = document.createElement('div');
+          cap.className = 'cell-caption';
+          cap.textContent = `bbox ${det.x},${det.y} · ${det.width}×${det.height}px`;
+          wrap.appendChild(cap);
+
+          wrap.appendChild(createMetaInput('id', r, c, `id final`, prev.id || ''));
+          wrap.appendChild(createMetaInput('category', r, c, `category`, prev.category || ''));
+
+          const mini1 = document.createElement('div');
+          mini1.className = 'meta-mini-row';
+          mini1.appendChild(createMetaSelect('layer', r, c, ['base', 'top', 'overlay', 'deco'], prev.layer || defaultLayerInput.value || 'base'));
+          mini1.appendChild(createMetaSelect('collision', r, c, ['none', 'circle', 'rect'], prev.collision || defaultCollisionInput.value || 'none'));
+          wrap.appendChild(mini1);
+
+          wrap.appendChild(createMetaInput('anchor', r, c, `anchor`, prev.anchor || defaultAnchorInput.value || 'bottom-center'));
+          wrap.appendChild(createMetaInput('top', r, c, `top (optionnel)`, prev.top || ''));
+
+          td.appendChild(wrap);
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      nameGridWrap.appendChild(table);
+      nameTableStatus.textContent = `Tableau généré : ${rows} rangée(s) × ${cols} colonne(s). Remplis les métadonnées pour chaque sprite détecté.`;
+    }
+
+    function getCellMeta(rowIndex, colIndex) {
+      const meta = {};
+      nameGridWrap.querySelectorAll(`[data-row="${rowIndex}"][data-col="${colIndex}"][data-field]`).forEach(el => {
+        meta[el.dataset.field] = (el.value || '').trim();
+      });
+      return meta;
+    }
+
+    function refreshNamesUi() {
+      if (!detections.length) return;
+      renderList();
+      if (selectedIndex >= 0 && selectedIndex < detections.length) drawPreview(detections[selectedIndex]);
+    }
+
+    function getRowNamesArray() {
+      return rowNamesInput.value
+        .split(/[\n,;]+/)
+        .map(v => v.trim())
+        .filter(Boolean);
+    }
+
+    function getExportName(det) {
+      const base = safeBaseName(baseNameInput.value);
+      const mode = namingMode.value;
+      const frameNum = String((det.colIndex ?? 0) + 1).padStart(3, '0');
+      const globalNum = String((det.globalIndex ?? 0) + 1).padStart(3, '0');
+
+      if (mode === 'table') {
+        const meta = getCellMeta(det.rowIndex ?? 0, det.colIndex ?? 0);
+        const custom = safeBaseName(meta.id || '');
+        if (custom) return `${custom}.png`;
+        return `row${String((det.rowIndex ?? 0) + 1).padStart(2, '0')}_col${String((det.colIndex ?? 0) + 1).padStart(2, '0')}.png`;
+      }
+      if (mode === 'rowindex') {
+        const rowLabel = `row${String((det.rowIndex ?? 0) + 1).padStart(2, '0')}`;
+        return `${rowLabel}_${frameNum}.png`;
+      }
+      if (mode === 'rownames') {
+        const rows = getRowNamesArray();
+        const name = safeRowName(rows[det.rowIndex ?? 0], det.rowIndex ?? 0);
+        return `${name}_${frameNum}.png`;
+      }
+      return `${base}_${globalNum}.png`;
+    }
+
+    function renderList() {
+      spriteList.innerHTML = '';
+      detections.forEach((det, idx) => {
+        const item = document.createElement('div');
+        item.className = 'sprite-item' + (idx === selectedIndex ? ' active' : '');
+        item.addEventListener('click', () => selectDetection(idx));
+
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb';
+        const img = document.createElement('img');
+        img.src = det.canvas.toDataURL('image/png');
+        thumb.appendChild(img);
+
+        const meta = document.createElement('div');
+        meta.innerHTML = `<div><strong>${getExportName(det)}</strong></div>
+                          <div class="small">${det.width} × ${det.height} px</div>
+                          <div class="small mono">${det.pixels} px utiles</div>`;
+
+        const rc = document.createElement('div');
+        rc.className = 'small mono';
+        rc.textContent = `R${(det.rowIndex ?? 0) + 1} C${(det.colIndex ?? 0) + 1}`;
+
+        item.appendChild(thumb);
+        item.appendChild(meta);
+        item.appendChild(rc);
+        spriteList.appendChild(item);
+      });
+      updateButtons();
+    }
+
+    function drawPreview(det) {
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      if (!det) {
+        resetPreview();
+        return;
+      }
+      const cw = previewCanvas.width, ch = previewCanvas.height;
+      const scale = Math.min(cw / det.width, ch / det.height);
+      const dw = det.width * scale, dh = det.height * scale;
+      const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+      previewCtx.imageSmoothingEnabled = false;
+      previewCtx.drawImage(det.canvas, dx, dy, dw, dh);
+      setText(previewInfo, `Sprite ${det.globalIndex + 1} — rangée ${det.rowIndex + 1}, colonne ${det.colIndex + 1}`);
+      bboxInfo.textContent = `bbox: x=${det.x} y=${det.y} w=${det.width} h=${det.height}`;
+      nameInfo.textContent = `export: ${getExportName(det)}`;
+    }
+
+    function redrawOverlay() {
+      overlayCanvas.width = sourceCanvas.width;
+      overlayCanvas.height = sourceCanvas.height;
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      if (!detections.length) return;
+      overlayCtx.save();
+      overlayCtx.font = '12px sans-serif';
+      overlayCtx.textBaseline = 'top';
+      detections.forEach((det, idx) => {
+        const isSel = idx === selectedIndex;
+        overlayCtx.setLineDash(isSel ? [5, 4] : []);
+        overlayCtx.lineDashOffset = isSel ? -antsOffset : 0;
+        overlayCtx.lineWidth = isSel ? 2 : 1;
+        overlayCtx.strokeStyle = isSel ? '#ffffff' : '#00d1ff';
+        overlayCtx.strokeRect(det.x - 0.5, det.y - 0.5, det.width, det.height);
+        const label = `${det.rowIndex + 1}.${det.colIndex + 1}`;
+        const tw = overlayCtx.measureText(label).width;
+        overlayCtx.fillStyle = isSel ? 'rgba(255,255,255,0.95)' : 'rgba(0,209,255,0.92)';
+        overlayCtx.fillRect(det.x, Math.max(0, det.y - 14), tw + 8, 14);
+        overlayCtx.fillStyle = '#000';
+        overlayCtx.fillText(label, det.x + 4, Math.max(0, det.y - 13));
+      });
+      overlayCtx.restore();
+    }
+
+    function selectDetection(index) {
+      selectedIndex = index;
+      renderList();
+      drawPreview(detections[index]);
+      redrawOverlay();
+      updateButtons();
+    }
+
+    function analyzeSheet() {
+      if (!loadedImage || !imageData) {
+        setText(analyzeStatus, 'Charge d’abord une image.');
+        return;
+      }
+      try {
+        clearDetections();
+        setText(analyzeStatus, 'Analyse en cours...');
+        const mask = createForegroundMask();
+        const comps = detectComponents(mask);
+        const merged = mergeComponents(comps);
+        const prepared = merged.map(box => {
+          const cropped = cropSprite(box, mask);
+          return {
+            ...box,
+            x: cropped.x,
+            y: cropped.y,
+            width: cropped.width,
+            height: cropped.height,
+            canvas: cropped.canvas
+          };
+        });
+        const grouped = assignRowsAndCols(prepared);
+        detections = grouped.list;
+
+        statSprites.textContent = String(detections.length);
+        statRows.textContent = String(grouped.rows.length);
+        statCols.textContent = String(grouped.maxCols);
+        detectedRowsCount = grouped.rows.length;
+        detectedColsCount = grouped.maxCols;
+        btnFillDetectedTable.disabled = !(detectedRowsCount > 0 && detectedColsCount > 0);
+
+        if (!detections.length) {
+          setText(analyzeStatus, 'Aucun sprite détecté. Essaie un autre fond, une autre tolérance ou un autre seuil alpha.');
+          setText(groupStatus, 'Aucun regroupement possible.');
+          setText(exportStatus, 'Aucun sprite à exporter.');
+          nameTableStatus.textContent = 'Aucune grille détectée pour générer le tableau.';
+          return;
+        }
+
+        renderList();
+        selectDetection(0);
+        redrawOverlay();
+        setText(analyzeStatus, `${detections.length} sprite(s) détecté(s).`);
+        setText(groupStatus, `${grouped.rows.length} rangée(s) détectée(s), triées de gauche à droite. Max colonnes: ${grouped.maxCols}.`);
+        setText(exportStatus, 'Tu peux exporter un sprite ou tous les sprites.');
+        nameTableStatus.textContent = `${grouped.rows.length} rangée(s) × ${grouped.maxCols} colonne(s) détectées. Clique sur “Remplir tableau nb x nb détecté”.`;
+      } catch (err) {
+        console.error(err);
+        setText(analyzeStatus, `Erreur : ${err.message || err}`);
+      }
+    }
+
+    function buildPropsJsonData() {
+      const manifestId = safeBaseName(manifestIdInput.value || baseNameInput.value || 'props_manifest');
+      const version = Math.max(1, parseInt(manifestVersionInput.value, 10) || 1);
+      const image = (imageRefInput.value || `${safeBaseName(baseNameInput.value)}.png`).trim() || `${safeBaseName(baseNameInput.value)}.png`;
+      const cellSize = Math.max(1, parseInt(cellSizeInput.value, 10) || 128);
+      const defaults = {
+        layer: (defaultLayerInput.value || 'base').trim() || 'base',
+        category: (defaultCategoryInput.value || 'prop').trim() || 'prop',
+        collision: (defaultCollisionInput.value || 'none').trim() || 'none',
+        anchor: (defaultAnchorInput.value || 'bottom-center').trim() || 'bottom-center'
+      };
+
+      const props = detections.map(det => {
+        const meta = getCellMeta(det.rowIndex ?? 0, det.colIndex ?? 0);
+        const out = {
+          id: safeBaseName(meta.id || getExportName(det).replace(/\.png$/i, '')),
+          x: (det.colIndex ?? 0) * cellSize,
+          y: (det.rowIndex ?? 0) * cellSize,
+          w: cellSize,
+          h: cellSize,
+          layer: (meta.layer || defaults.layer).trim(),
+          category: (meta.category || defaults.category).trim(),
+          collision: (meta.collision || defaults.collision).trim(),
+          anchor: (meta.anchor || defaults.anchor).trim()
+        };
+        if ((meta.top || '').trim()) out.top = safeBaseName(meta.top.trim());
+        return out;
+      });
+
+      return {
+        id: manifestId,
+        version,
+        image,
+        cellSize,
+        columns: detectedColsCount,
+        rows: detectedRowsCount,
+        props
+      };
+    }
+
+    function downloadTextFile(filename, content, mime = 'application/json') {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    async function exportJsonFile() {
+      const data = buildPropsJsonData();
+      const filename = `${safeBaseName(data.id)}.json`;
+      const content = JSON.stringify(data, null, 2);
+
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(content);
+          await writable.close();
+          setText(exportStatus, `${filename} exporté.`);
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') throw err;
+          console.warn(err);
+        }
+      }
+
+      downloadTextFile(filename, content, 'application/json');
+      setText(exportStatus, `${filename} téléchargé.`);
+    }
+
+    function canvasToBlob(canvas) {
+      return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    }
+
+    function downloadCanvas(canvas, filename) {
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      }, 'image/png');
+    }
+
+    async function exportAllToDirectory() {
+      if (!('showDirectoryPicker' in window)) return false;
+      const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+      for (let i = 0; i < detections.length; i++) {
+        const det = detections[i];
+        const name = getExportName(det);
+        const fileHandle = await dir.getFileHandle(name, { create: true });
+        const writable = await fileHandle.createWritable();
+        const blob = await canvasToBlob(det.canvas);
+        await writable.write(blob);
+        await writable.close();
+        setText(exportStatus, `Export ${i + 1}/${detections.length} : ${name}`);
+      }
+      setText(exportStatus, `Terminé : ${detections.length} sprite(s) exporté(s) dans le dossier choisi.`);
+      return true;
+    }
+
+    async function exportAllFallback() {
+      for (let i = 0; i < detections.length; i++) {
+        const det = detections[i];
+        const name = getExportName(det);
+        downloadCanvas(det.canvas, name);
+        setText(exportStatus, `Téléchargement ${i + 1}/${detections.length} : ${name}`);
+        await new Promise(r => setTimeout(r, 180));
+      }
+      setText(exportStatus, `Terminé : ${detections.length} sprite(s) téléchargé(s).`);
+    }
+
+    btnAnalyze.addEventListener('click', analyzeSheet);
+    btnFillDetectedTable.addEventListener('click', () => {
+      if (!(detectedRowsCount > 0 && detectedColsCount > 0)) {
+        nameTableStatus.textContent = 'Aucune grille détectée pour générer le tableau.';
+        return;
+      }
+      buildDetectedNameTable(detectedRowsCount, detectedColsCount, true);
+      if (namingMode.value !== 'table') namingMode.value = 'table';
+      refreshNamesUi();
+    });
+    btnClearNameTable.addEventListener('click', () => {
+      clearNameTable();
+      nameTableStatus.textContent = 'Tableau vidé.';
+      if (detections.length) refreshNamesUi();
+    });
+    nameGridWrap.addEventListener('input', () => {
+      if (detections.length && namingMode.value === 'table') refreshNamesUi();
+    });
+    rowThresholdInput.addEventListener('change', () => { if (loadedImage) analyzeSheet(); });
+    namingMode.addEventListener('change', () => { if (detections.length) { refreshNamesUi(); } });
+    rowNamesInput.addEventListener('input', () => { if (detections.length && namingMode.value === 'rownames') { refreshNamesUi(); } });
+    baseNameInput.addEventListener('input', () => { if (detections.length && namingMode.value === 'generic') { refreshNamesUi(); } });
+
+    btnExportJson.addEventListener('click', async () => {
+      if (!detections.length) return;
+      try {
+        await exportJsonFile();
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          setText(exportStatus, 'Export JSON annulé.');
+        } else {
+          console.error(err);
+          setText(exportStatus, `Erreur export JSON : ${err.message || err}`);
+        }
+      }
+    });
+
+    btnExportSelected.addEventListener('click', () => {
+      if (selectedIndex < 0 || selectedIndex >= detections.length) return;
+      const det = detections[selectedIndex];
+      const name = getExportName(det);
+      downloadCanvas(det.canvas, name);
+      setText(exportStatus, `${name} exporté.`);
+    });
+
+    btnExportAll.addEventListener('click', async () => {
+      if (!detections.length) return;
+      btnExportAll.disabled = true;
+      try {
+        const ok = await exportAllToDirectory();
+        if (!ok) await exportAllFallback();
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          setText(exportStatus, 'Export annulé.');
+        } else {
+          console.error(err);
+          setText(exportStatus, `Erreur export : ${err.message || err}`);
+        }
+      } finally {
+        updateButtons();
+      }
+    });
+
+    btnPickBg.addEventListener('click', () => {
+      pickBgArmed = true;
+      bgMode.value = 'picked';
+      pickHint.textContent = 'Touchez/cliquez une couleur de fond dans l’image.';
+    });
+
+    sourceCanvas.addEventListener('click', (e) => {
+      if (!pickBgArmed || !loadedImage) return;
+      const rect = sourceCanvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) * (sourceCanvas.width / rect.width));
+      const y = Math.floor((e.clientY - rect.top) * (sourceCanvas.height / rect.height));
+      if (x < 0 || y < 0 || x >= sourceCanvas.width || y >= sourceCanvas.height) return;
+      const p = sourceCtx.getImageData(x, y, 1, 1).data;
+      pickedBgColor = { r: p[0], g: p[1], b: p[2], a: p[3] };
+      pickBgArmed = false;
+      pickHint.textContent = `Fond choisi : ${rgbaToText(pickedBgColor)}`;
+      setText(analyzeStatus, `Couleur de fond choisie en (${x}, ${y}). Tu peux lancer la détection.`);
+    });
+
+    imageLoader.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedImage = img;
+          sourceCanvas.width = img.width;
+          sourceCanvas.height = img.height;
+          sourceCtx.clearRect(0, 0, img.width, img.height);
+          sourceCtx.drawImage(img, 0, 0);
+          imageData = sourceCtx.getImageData(0, 0, img.width, img.height);
+          imageInfo.textContent = `${file.name} — ${img.width} × ${img.height}px`;
+          const safeName = safeBaseName(file.name.replace(/\.[^.]+$/, '') || 'sprite');
+          baseNameInput.value = safeName;
+          manifestIdInput.value = safeName;
+          imageRefInput.value = `${safeName}.png`;
+          pickedBgColor = null;
+          pickBgArmed = false;
+          pickHint.textContent = '';
+          clearDetections();
+          clearNameTable();
+          namingMode.value = 'table';
+          setText(analyzeStatus, 'Image chargée. Lance la détection.');
+          setText(exportStatus, 'Aucun sprite prêt à exporter.');
+        };
+        img.onerror = () => {
+          loadedImage = null;
+          imageData = null;
+          imageInfo.textContent = 'Erreur lors du chargement de l’image.';
+          clearDetections();
+          clearNameTable();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setInterval(() => {
+      if (selectedIndex >= 0 && detections.length) {
+        antsOffset = (antsOffset + 1) % 9;
+        redrawOverlay();
+      }
+    }, 120);
+  </script>
+</body>
+</html>

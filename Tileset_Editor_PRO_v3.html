@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tileset Editor PRO v3 — Sélections, rotation & raccourcis</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #16181d;
+            --panel: #23262d;
+            --panel-2: #1c1f25;
+            --text: #eef1f4;
+            --muted: #a7adb7;
+            --accent: #56c271;
+            --accent-hover: #69d683;
+            --danger: #df5b62;
+            --border: #3a3f49;
+            --blue: #4aa3ff;
+            --button: #343943;
+            --button-hover: #414752;
+            --shadow: rgba(0, 0, 0, 0.45);
+            --left-width: 330px;
+            --right-width: 370px;
+            --collapsed-width: 34px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 11.5px/1.35 "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            display: grid;
+            grid-template-columns: var(--left-width) minmax(260px, 1fr) var(--right-width);
+            grid-template-rows: minmax(0, 1fr) 29px;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        body.left-collapsed { grid-template-columns: var(--collapsed-width) minmax(260px, 1fr) var(--right-width); }
+        body.right-collapsed { grid-template-columns: var(--left-width) minmax(260px, 1fr) var(--collapsed-width); }
+        body.left-collapsed.right-collapsed { grid-template-columns: var(--collapsed-width) minmax(260px, 1fr) var(--collapsed-width); }
+
+        .panel {
+            position: relative;
+            min-width: 0;
+            padding: 13px 15px;
+            background: var(--panel);
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-color: #555b66 transparent;
+        }
+
+        .toolbar { border-right: 1px solid var(--border); }
+        .layers-panel { border-left: 1px solid var(--border); }
+        .sidebar-content { min-width: 296px; }
+        .layers-panel .sidebar-content { min-width: 336px; }
+        body.left-collapsed .toolbar { padding: 0; overflow: hidden; }
+        body.right-collapsed .layers-panel { padding: 0; overflow: hidden; }
+        body.left-collapsed .toolbar .sidebar-content,
+        body.right-collapsed .layers-panel .sidebar-content { display: none; }
+
+        .collapse-button {
+            position: fixed;
+            top: 50%;
+            z-index: 30;
+            width: 23px;
+            min-width: 23px;
+            height: 48px;
+            min-height: 48px;
+            padding: 0;
+            border-radius: 5px;
+            font-size: 18px;
+            line-height: 1;
+            transform: translateY(-50%);
+            box-shadow: 0 3px 12px rgba(0,0,0,.35);
+            transition: none !important;
+        }
+        .collapse-button:active { transform: translateY(-50%) !important; }
+        #toggleLeft { left: calc(var(--left-width) - 12px); }
+        #toggleRight { right: calc(var(--right-width) - 12px); }
+        body.left-collapsed #toggleLeft { left: 5px; }
+        body.right-collapsed #toggleRight { right: 5px; }
+
+        .workspace {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 38px;
+            background: radial-gradient(circle at center, rgba(255,255,255,.035), transparent 55%), #101216;
+        }
+
+        .canvas-container {
+            position: relative;
+            flex: 0 0 auto;
+            margin: auto;
+            background-color: #252932;
+            background-image:
+                linear-gradient(45deg, #353a44 25%, transparent 25%),
+                linear-gradient(-45deg, #353a44 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #353a44 75%),
+                linear-gradient(-45deg, transparent 75%, #353a44 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+            box-shadow: 0 14px 45px var(--shadow);
+            outline: 1px solid #474d59;
+        }
+
+        canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+        #mainCanvas { cursor: crosshair; touch-action: none; }
+        #selectionCanvas { position: absolute; inset: 0; pointer-events: none; }
+
+        h2 { margin: 0 0 12px; font-size: 16px; letter-spacing: .15px; }
+        h3 {
+            margin: 15px 0 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 10.5px;
+            letter-spacing: .85px;
+            text-transform: uppercase;
+        }
+        h3:first-of-type { margin-top: 0; }
+        button, input, select { font: inherit; }
+
+        button {
+            min-height: 30px;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            background: var(--button);
+            color: var(--text);
+            padding: 5px 7px;
+            cursor: pointer;
+            transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+        }
+        button:hover:not(:disabled) { background: var(--button-hover); }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: .42; cursor: not-allowed; }
+        button.active { background: var(--accent); color: #102015; }
+        button.primary { background: var(--accent); color: #102015; font-weight: 700; }
+        button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+        button.danger { background: #71343a; }
+        button.small { min-height: 25px; padding: 3px 6px; font-size: 10.5px; }
+        button.icon { min-width: 26px; padding: 3px 5px; }
+
+        .tool-grid, .button-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+        .button-row { display: flex; gap: 5px; }
+        .button-row > * { flex: 1; min-width: 0; }
+        .control { display: grid; gap: 4px; margin-bottom: 8px; color: var(--muted); }
+        .control-line { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+        .context-control[hidden] { display: none !important; }
+        input[type="range"] { width: 100%; }
+        input[type="color"] {
+            width: 100%; height: 34px; border: 1px solid var(--border); border-radius: 5px;
+            padding: 2px; background: var(--panel-2); cursor: pointer;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%; border: 1px solid var(--border); border-radius: 5px;
+            background: var(--panel-2); color: var(--text); padding: 6px 7px;
+        }
+        input[type="checkbox"] { accent-color: var(--accent); }
+        .check-line { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+        .dimension-box { padding: 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel-2); margin-bottom: 8px; }
+        .dimension-title { margin-bottom: 7px; color: var(--text); font-weight: 650; }
+        .dimension-grid { display: grid; grid-template-columns: minmax(0, 82px) minmax(0, 82px) auto minmax(86px, 1fr); gap: 6px; align-items: end; }
+        .dimension-grid label:not(.check-line) { display: grid; gap: 3px; color: var(--muted); }
+        .dimension-grid input[type="number"] { min-width: 0; padding: 5px 6px; }
+        .dimension-grid .check-line { align-self: end; min-height: 29px; white-space: nowrap; }
+        .dimension-grid button { align-self: end; }
+        .rotation-box { margin-top: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2); }
+        .rotation-line { display: grid; grid-template-columns: minmax(0, 1fr) 76px; gap: 7px; align-items: center; }
+        .rotation-angle { text-align: right; }
+        .memory-active { border-color: var(--blue) !important; background: #25415c !important; }
+        .hint { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+        .kbd { display: inline-block; padding: 1px 4px; border: 1px solid #555b66; border-bottom-width: 2px; border-radius: 4px; background: #2b2f37; color: #e5e8ec; font-size: 9px; }
+
+        .layer-list { display: grid; gap: 6px; margin-top: 10px; }
+        .layer-item {
+            position: relative;
+            display: grid;
+            grid-template-columns: 25px 42px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 6px;
+            min-height: 40px;
+            padding: 6px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: var(--panel-2);
+            cursor: pointer;
+        }
+        .layer-item:hover { border-color: #4b515d; }
+        .layer-item.active { border-color: var(--accent); background: #28322b; }
+        .layer-item.background-layer { background: #29262a; }
+        .layer-item.dragging { opacity: .35; }
+        .layer-item.drop-before::before,
+        .layer-item.drop-after::after {
+            content: "";
+            position: absolute;
+            left: 5px; right: 5px;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--blue);
+            box-shadow: 0 0 7px rgba(74,163,255,.8);
+            z-index: 5;
+        }
+        .layer-item.drop-before::before { top: -5px; }
+        .layer-item.drop-after::after { bottom: -5px; }
+        .layer-preview {
+            width: 40px; height: 40px; border: 1px solid #4b515d; border-radius: 4px;
+            background-color: #252932;
+            background-image: linear-gradient(45deg,#363b45 25%,transparent 25%),linear-gradient(-45deg,#363b45 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#363b45 75%),linear-gradient(-45deg,transparent 75%,#363b45 75%);
+            background-size: 8px 8px; background-position: 0 0,0 4px,4px -4px,-4px 0;
+            image-rendering: pixelated; flex: 0 0 auto;
+        }
+        .layer-item.locked-layer { border-style: dashed; }
+        .layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; }
+        .layer-meta { color: var(--muted); font-size: 9px; }
+        .layer-actions { display: flex; gap: 3px; align-items: center; }
+        .visibility.off { opacity: .35; }
+        .bg-color-mini { width: 30px !important; height: 25px !important; padding: 1px !important; }
+        .drag-hint { color: #707783; font-size: 14px; cursor: grab; }
+        .drag-hint:active { cursor: grabbing; }
+
+        .statusbar {
+            grid-column: 1 / -1;
+            display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            padding: 0 11px; border-top: 1px solid var(--border); background: #121419;
+            color: var(--muted); font-size: 10px; white-space: nowrap; overflow: hidden;
+        }
+        .statusbar span { overflow: hidden; text-overflow: ellipsis; }
+
+        .drop-active::after {
+            content: "Déposez un PNG ou un projet JSON";
+            position: absolute; inset: 20px; display: grid; place-items: center;
+            border: 2px dashed var(--accent); border-radius: 12px;
+            background: rgba(16,18,22,.88); color: var(--accent); font-size: 17px; font-weight: 700;
+            pointer-events: none; z-index: 10;
+        }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+            padding: 24px; background: rgba(0,0,0,.72);
+        }
+        .modal-backdrop[hidden] { display: none; }
+        .modal-card {
+            width: min(620px, 96vw); max-height: min(760px, 90vh); overflow: auto;
+            border: 1px solid var(--border); border-radius: 10px; background: var(--panel);
+            box-shadow: 0 20px 70px rgba(0,0,0,.65); padding: 16px;
+        }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+        .modal-header h2 { margin: 0; }
+        .shortcut-list { display: grid; gap: 6px; }
+        .shortcut-row { display: grid; grid-template-columns: minmax(160px,1fr) 180px; align-items: center; gap: 10px; }
+        .shortcut-input { text-align: center; cursor: pointer; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 14px; }
+
+        @media (max-width: 1100px) {
+            :root { --left-width: 300px; --right-width: 330px; }
+            .panel { padding: 10px 12px; }
+            .sidebar-content { min-width: 274px; }
+            .layers-panel .sidebar-content { min-width: 304px; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="panel toolbar" id="leftSidebar">
+        <button class="collapse-button" id="toggleLeft" title="Rétracter la barre gauche">‹</button>
+        <div class="sidebar-content">
+            <h2>Tileset Editor PRO v3</h2>
+
+            <h3>Historique</h3>
+            <div class="button-row">
+                <button id="btnUndo" onclick="executeUndo()" title="Ctrl+Z">↶ Annuler</button>
+                <button id="btnRedo" onclick="executeRedo()" title="Ctrl+Y / Ctrl+Maj+Z">↷ Rétablir</button>
+            </div>
+
+            <h3>Outils</h3>
+            <div class="tool-grid" id="toolGrid">
+                <button id="btn-pencil" class="active" onclick="setTool('pencil')" title="B">Crayon</button>
+                <button id="btn-eraser" onclick="setTool('eraser')" title="E">Gomme</button>
+                <button id="btn-fill" onclick="setTool('fill')" title="G">Remplir</button>
+                <button id="btn-move" onclick="setTool('move')" title="M">Déplacer calque</button>
+                <button id="btn-rect-select" onclick="setTool('rect-select')" title="R">Sélect. rectangle</button>
+                <button id="btn-lasso-select" onclick="setTool('lasso-select')" title="L">Sélect. lasso</button>
+                <button id="btn-wand" onclick="setTool('wand')" title="W">Baguette magique</button>
+            </div>
+
+            <h3>Dessin</h3>
+            <div class="control">
+                <label for="colorPicker">Couleur</label>
+                <input type="color" id="colorPicker" value="#ffffff">
+            </div>
+            <div class="control context-control" id="brushControl">
+                <div class="control-line"><label for="brushSize">Épaisseur</label><span id="brushValue">1 px</span></div>
+                <input type="range" id="brushSize" min="1" max="32" value="1">
+            </div>
+            <div class="control context-control" id="toleranceControl" hidden>
+                <div class="control-line"><label for="tolerance">Tolérance couleur</label><span id="tolValue">0</span></div>
+                <input type="range" id="tolerance" min="0" max="510" value="0">
+            </div>
+
+            <h3>Sélection</h3>
+            <div class="button-grid">
+                <button onclick="copySelection()" title="Ctrl+C">Copier</button>
+                <button onclick="cutSelection()" title="Ctrl+X">Couper</button>
+                <button onclick="pasteSelection(false)" title="Ctrl+V">Coller</button>
+                <button onclick="pasteSelection(true)">Coller + calque</button>
+                <button onclick="invertSelection()">Inverser sélection</button>
+                <button id="btnMemorizeSelection" onclick="memorizeSelection()">Mémoriser sélection</button>
+                <button id="btnForgetSelection" onclick="clearSelectionMemory()" disabled>Oublier mémoire</button>
+                <button onclick="clearSelection()">Désélectionner</button>
+                <button id="btnBake" class="primary" onclick="bakeFloatingSelection()" disabled>Valider</button>
+                <button id="btnCancelFloat" onclick="cancelFloatingSelection()" disabled>Annuler transfo.</button>
+                <button onclick="deleteSelectedPixels()" class="danger">Effacer pixels</button>
+            </div>
+            <div class="rotation-box" id="rotationControl" hidden>
+                <div class="control-line"><label for="rotationRange">Rotation</label><span>Centre de l’élément</span></div>
+                <div class="rotation-line">
+                    <input type="range" id="rotationRange" min="0" max="360" step="1" value="0">
+                    <input type="text" id="rotationAngle" class="rotation-angle" value="0°" inputmode="decimal" aria-label="Angle précis">
+                </div>
+            </div>
+
+            <h3>Affichage & fichier</h3>
+            <button id="btn-3x3" onclick="toggle3x3()">Activer aperçu 3×3 seamless</button>
+            <div class="control" style="margin-top:8px">
+                <div class="control-line"><label for="zoomRange">Zoom</label><span id="zoomValue">15×</span></div>
+                <input type="range" id="zoomRange" min="0.05" max="40" step="0.05" value="15">
+            </div>
+            <div class="button-grid">
+                <button onclick="openFilePicker('png')">Import PNG en calque</button>
+                <button onclick="requestNewPNG()">Charger nouveau PNG</button>
+                <button onclick="openFilePicker('project')">Charger projet</button>
+                <button onclick="exportPNG()" class="primary">Exporter PNG</button>
+                <button onclick="exportProject()">Sauver projet</button>
+                <button onclick="openShortcutModal()">Raccourcis</button>
+            </div>
+            <input type="file" id="pngInput" accept="image/png" hidden>
+            <input type="file" id="newPngInput" accept="image/png" hidden>
+            <input type="file" id="projectInput" accept="application/json,.json" hidden>
+        </div>
+    </aside>
+
+    <main class="workspace" id="workspace">
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="mainCanvas"></canvas>
+            <canvas id="selectionCanvas"></canvas>
+        </div>
+    </main>
+
+    <aside class="panel layers-panel" id="rightSidebar">
+        <button class="collapse-button" id="toggleRight" title="Rétracter la barre droite">›</button>
+        <div class="sidebar-content">
+            <h2>Document & calques</h2>
+
+            <h3>Dimensions</h3>
+            <div class="dimension-box">
+                <div class="dimension-title">Taille du canvas</div>
+                <div class="dimension-grid">
+                    <label>Largeur<input type="number" id="canvasWidth" min="1" max="4096" value="32"></label>
+                    <label>Hauteur<input type="number" id="canvasHeight" min="1" max="4096" value="32"></label>
+                    <label class="check-line"><input type="checkbox" id="canvasRatioLock" checked> Ratio</label>
+                    <button onclick="applyCanvasResize()">Appliquer</button>
+                </div>
+            </div>
+
+            <div class="dimension-box">
+                <div class="dimension-title">Taille de l’image</div>
+                <div class="dimension-grid">
+                    <label>Largeur<input type="number" id="imageWidth" min="1" max="4096" value="32"></label>
+                    <label>Hauteur<input type="number" id="imageHeight" min="1" max="4096" value="32"></label>
+                    <label class="check-line"><input type="checkbox" id="imageRatioLock" checked> Ratio</label>
+                    <button onclick="applyImageResize()">Redimensionner</button>
+                </div>
+            </div>
+            <label class="check-line"><input type="checkbox" id="fitCanvasOnImport" checked> Adapter automatiquement le canvas au PNG importé</label>
+
+            <h3>Calques</h3>
+            <div class="button-grid">
+                <button onclick="addLayer()">+ Nouveau</button>
+                <button onclick="duplicateActiveLayer()">Dupliquer</button>
+                <button onclick="addBackgroundLayer()">+ Fond uni</button>
+                <button onclick="mergeDown()">Fusionner bas</button>
+            </div>
+
+            <h3>Calque actif</h3>
+            <div class="control"><label for="layerName">Nom</label><input type="text" id="layerName" maxlength="60"></div>
+            <div class="control">
+                <div class="control-line"><label for="layerOpacity">Opacité</label><span id="opacityValue">100 %</span></div>
+                <input type="range" id="layerOpacity" min="0" max="100" value="100">
+            </div>
+            <div class="button-row">
+                <button id="moveLayerUp" onclick="moveLayerOrder(1)">Monter</button>
+                <button id="moveLayerDown" onclick="moveLayerOrder(-1)">Descendre</button>
+                <button id="activeLayerLock" onclick="toggleActiveLayerLock()">Verrouiller</button>
+                <button id="deleteActiveLayerBtn" onclick="deleteLayer(activeLayerIndex)" class="danger">Supprimer</button>
+            </div>
+            <div class="button-row" style="margin-top:5px">
+                <button id="resetOffsetBtn" onclick="resetLayerOffset()">Réinitialiser décalage</button>
+                <button id="flattenOffsetBtn" onclick="flattenLayerOffset()">Appliquer décalage</button>
+            </div>
+
+            <div class="layer-list" id="layerList"></div>
+        </div>
+    </aside>
+
+    <div class="modal-backdrop" id="shortcutModal" hidden>
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="shortcutTitle">
+            <div class="modal-header">
+                <h2 id="shortcutTitle">Raccourcis clavier</h2>
+                <button class="small icon" onclick="closeShortcutModal()" aria-label="Fermer">×</button>
+            </div>
+            <div class="shortcut-list" id="shortcutList"></div>
+            <div class="modal-actions">
+                <button onclick="resetShortcutDrafts()">Valeurs par défaut</button>
+                <button onclick="closeShortcutModal()">Annuler</button>
+                <button class="primary" onclick="saveShortcutSettings()">Enregistrer</button>
+            </div>
+        </section>
+    </div>
+
+    <footer class="statusbar">
+        <span id="statusText">Prêt.</span>
+        <span id="cursorText">32 × 32 px</span>
+    </footer>
+
+    <script>
+        "use strict";
+
+        const MAX_HISTORY = 50;
+        const MAX_DIMENSION = 4096;
+        let DOC_W = 32;
+        let DOC_H = 32;
+        let IMAGE_W = 32;
+        let IMAGE_H = 32;
+        let SCALE = 15;
+        let is3x3Mode = false;
+        let currentTool = "pencil";
+        let currentColor = "#ffffff";
+        let brushSize = 1;
+        let isPointerDown = false;
+        let actionDirty = false;
+        let startX = 0, startY = 0, currentX = 0, currentY = 0;
+        let selectionMode = "replace";
+        let lassoPoints = [];
+        let selectionMask = new Uint8Array(DOC_W * DOC_H);
+        let hasSelection = false;
+        let selectionMemory = null;
+        let selectionMemoryActive = false;
+        let clipboardBuffer = null;
+        let floatingSelection = null;
+        let activeHandle = null;
+        let draggedLayer = null;
+        let dragSlot = null;
+        let projectDirty = false;
+        const UNSAVED_MESSAGE = "Voulez-vous vraiment fermer cette page sans sauvegarder le projet ?";
+
+        const mainCanvas = document.getElementById("mainCanvas");
+        const mainCtx = mainCanvas.getContext("2d", { willReadFrequently: true });
+        const selectionCanvas = document.getElementById("selectionCanvas");
+        const selectionCtx = selectionCanvas.getContext("2d");
+        const canvasContainer = document.getElementById("canvasContainer");
+        const workspace = document.getElementById("workspace");
+        let compCanvas = createCanvas(DOC_W, DOC_H);
+        let compCtx = compCanvas.getContext("2d", { willReadFrequently: true });
+        let previewCanvas = createCanvas(DOC_W, DOC_H);
+        let previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
+
+        function createCanvas(width, height) {
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            return canvas;
+        }
+        function mod(value, modulo) { return ((value % modulo) + modulo) % modulo; }
+        function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+        function pixelIndex(x, y) { return y * DOC_W + x; }
+        function setStatus(message) { document.getElementById("statusText").textContent = message; }
+        function validDimension(value) { return clamp(Math.round(Number(value) || 1), 1, MAX_DIMENSION); }
+
+        function rebuildBuffers() {
+            compCanvas = createCanvas(DOC_W, DOC_H);
+            compCtx = compCanvas.getContext("2d", { willReadFrequently: true });
+            previewCanvas = createCanvas(DOC_W, DOC_H);
+            previewCtx = previewCanvas.getContext("2d", { willReadFrequently: true });
+            compCtx.imageSmoothingEnabled = false;
+            previewCtx.imageSmoothingEnabled = false;
+        }
+
+        class Layer {
+            constructor(name, options = {}) {
+                this.name = name;
+                this.canvas = createCanvas(options.width || DOC_W, options.height || DOC_H);
+                this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+                this.ctx.imageSmoothingEnabled = false;
+                this.offsetX = Number(options.offsetX) || 0;
+                this.offsetY = Number(options.offsetY) || 0;
+                this.visible = options.visible !== false;
+                this.opacity = Number.isFinite(Number(options.opacity)) ? clamp(Number(options.opacity), 0, 1) : 1;
+                this.isBackground = Boolean(options.isBackground);
+                this.locked = this.isBackground || Boolean(options.locked);
+                this.bgColor = options.bgColor || "#000000";
+                if (this.isBackground) this.initBackground(this.bgColor);
+            }
+            setDimensions(width, height) {
+                this.canvas.width = width;
+                this.canvas.height = height;
+                this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+                this.ctx.imageSmoothingEnabled = false;
+            }
+            initBackground(color) {
+                this.isBackground = true;
+                this.bgColor = color || "#000000";
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillStyle = this.bgColor;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+            clone(name = this.name, forceNormal = false) {
+                const cloned = new Layer(name, {
+                    width: DOC_W, height: DOC_H,
+                    offsetX: forceNormal ? 0 : this.offsetX,
+                    offsetY: forceNormal ? 0 : this.offsetY,
+                    visible: this.visible, opacity: this.opacity,
+                    isBackground: forceNormal ? false : this.isBackground,
+                    locked: forceNormal ? false : this.locked,
+                    bgColor: this.bgColor
+                });
+                cloned.ctx.clearRect(0, 0, DOC_W, DOC_H);
+                cloned.ctx.drawImage(this.canvas, 0, 0);
+                return cloned;
+            }
+        }
+
+        let layers = [];
+        let activeLayerIndex = 0;
+        function activeLayer() { return layers[activeLayerIndex]; }
+        function backgroundLayerIndex() { return layers.findIndex(layer => layer.isBackground); }
+        function ensureBackgroundAtBottom() {
+            const index = backgroundLayerIndex();
+            if (index > 0) {
+                const [bg] = layers.splice(index, 1);
+                layers.unshift(bg);
+                if (activeLayerIndex === index) activeLayerIndex = 0;
+                else if (activeLayerIndex < index) activeLayerIndex++;
+            }
+        }
+        function isEditableLayer(layer = activeLayer()) { return Boolean(layer && !layer.isBackground && !layer.locked); }
+
+        function addLayer(name = `Calque ${layers.filter(l => !l.isBackground).length + 1}`, options = {}, commit = true) {
+            if (floatingSelection) cancelFloatingSelection();
+            const layer = new Layer(name, options);
+            layers.push(layer);
+            activeLayerIndex = layers.length - 1;
+            if (commit) afterLayerStructureChange("Nouveau calque créé.");
+            return layer;
+        }
+        function addBackgroundLayer() {
+            if (floatingSelection) cancelFloatingSelection();
+            const existing = backgroundLayerIndex();
+            if (existing >= 0) {
+                activeLayerIndex = existing;
+                updateLayerUI();
+                setStatus("Un calque de fond existe déjà. Sa couleur est modifiable directement dans sa ligne.");
+                return;
+            }
+            const color = document.getElementById("colorPicker").value;
+            layers.unshift(new Layer("Fond uni", { isBackground: true, bgColor: color }));
+            activeLayerIndex = 0;
+            afterLayerStructureChange("Calque de fond fixe créé.");
+        }
+        function getDuplicateName(sourceName) {
+            const root = String(sourceName || "Calque").replace(/-\d+$/, "");
+            let suffix = 1;
+            const names = new Set(layers.map(layer => layer.name));
+            while (names.has(`${root}-${suffix}`)) suffix++;
+            return `${root}-${suffix}`;
+        }
+        function duplicateActiveLayer() {
+            if (!activeLayer()) return;
+            if (floatingSelection) cancelFloatingSelection();
+            const source = activeLayer();
+            const clone = source.clone(getDuplicateName(source.name), source.isBackground);
+            layers.splice(activeLayerIndex + 1, 0, clone);
+            activeLayerIndex++;
+            afterLayerStructureChange("Calque dupliqué.");
+        }
+        function toggleLayerLock(index) {
+            const layer = layers[index];
+            if (!layer || layer.isBackground || floatingSelection) return;
+            layer.locked = !layer.locked;
+            history.commit(); updateLayerUI(); render();
+            setStatus(layer.locked ? "Calque verrouillé." : "Calque déverrouillé.");
+        }
+        function toggleActiveLayerLock() { toggleLayerLock(activeLayerIndex); }
+        function deleteLayer(index) {
+            if (layers.length <= 1 || index < 0 || index >= layers.length) {
+                setStatus("Impossible de supprimer le dernier calque.");
+                return;
+            }
+            if (layers[index].locked || layers[index].isBackground) {
+                setStatus("Déverrouillez ce calque avant de le supprimer.");
+                return;
+            }
+            if (floatingSelection) cancelFloatingSelection();
+            layers.splice(index, 1);
+            activeLayerIndex = clamp(activeLayerIndex > index ? activeLayerIndex - 1 : activeLayerIndex, 0, layers.length - 1);
+            afterLayerStructureChange("Calque supprimé.");
+        }
+        function setActiveLayer(index) {
+            if (index < 0 || index >= layers.length) return;
+            if (floatingSelection) {
+                setStatus("Validez ou annulez la transformation avant de changer de calque.");
+                return;
+            }
+            activeLayerIndex = index;
+            updateLayerUI();
+            render();
+        }
+        function moveLayerOrder(direction) {
+            const layer = activeLayer();
+            if (!layer || layer.isBackground || layer.locked) {
+                setStatus(layer?.locked ? "Déverrouillez le calque avant de le déplacer." : "Le calque de fond est fixe.");
+                return;
+            }
+            const target = activeLayerIndex + direction;
+            if (target < 0 || target >= layers.length || layers[target].isBackground) return;
+            [layers[activeLayerIndex], layers[target]] = [layers[target], layers[activeLayerIndex]];
+            activeLayerIndex = target;
+            afterLayerStructureChange("Ordre des calques modifié.");
+        }
+        function toggleLayerVisibility(index) {
+            if (!layers[index] || floatingSelection) return;
+            layers[index].visible = !layers[index].visible;
+            history.commit(); updateLayerUI(); render();
+            setStatus(layers[index].visible ? "Calque affiché." : "Calque masqué.");
+        }
+        function mergeDown() {
+            if (activeLayerIndex <= 0) return setStatus("Aucun calque inférieur à fusionner.");
+            if (layers[activeLayerIndex - 1].isBackground) return setStatus("Le fond fixe ne peut pas recevoir une fusion.");
+            if (layers[activeLayerIndex].locked || layers[activeLayerIndex - 1].locked) return setStatus("Déverrouillez les deux calques avant la fusion.");
+            if (floatingSelection) cancelFloatingSelection();
+            const upper = layers[activeLayerIndex];
+            const lower = layers[activeLayerIndex - 1];
+            const merged = createCanvas(DOC_W, DOC_H);
+            const ctx = merged.getContext("2d");
+            drawLayerWrapped(ctx, lower, true);
+            drawLayerWrapped(ctx, upper, true);
+            lower.ctx.clearRect(0, 0, DOC_W, DOC_H);
+            lower.ctx.drawImage(merged, 0, 0);
+            lower.offsetX = lower.offsetY = 0;
+            lower.opacity = 1;
+            lower.visible = lower.visible || upper.visible;
+            lower.name = `${lower.name} + ${upper.name}`;
+            layers.splice(activeLayerIndex, 1);
+            activeLayerIndex--;
+            afterLayerStructureChange("Calques fusionnés.");
+        }
+        function resetLayerOffset() {
+            const layer = activeLayer();
+            if (!isEditableLayer(layer)) return setStatus(layer?.locked ? "Le calque est verrouillé." : "Le fond fixe n’a pas de décalage.");
+            if (layer.offsetX === 0 && layer.offsetY === 0) return;
+            layer.offsetX = layer.offsetY = 0;
+            history.commit(); updateLayerUI(); render(); setStatus("Décalage réinitialisé.");
+        }
+        function flattenLayerOffset() {
+            const layer = activeLayer();
+            if (!isEditableLayer(layer)) return setStatus(layer?.locked ? "Le calque est verrouillé." : "Le fond fixe n’a pas de décalage.");
+            if (mod(layer.offsetX, DOC_W) === 0 && mod(layer.offsetY, DOC_H) === 0) return;
+            const visual = getLayerVisualCanvas(layer, false);
+            layer.ctx.clearRect(0, 0, DOC_W, DOC_H);
+            layer.ctx.drawImage(visual, 0, 0);
+            layer.offsetX = layer.offsetY = 0;
+            history.commit(); updateLayerUI(); render(); setStatus("Décalage appliqué aux pixels.");
+        }
+        function afterLayerStructureChange(message) {
+            ensureBackgroundAtBottom();
+            history.commit(); updateLayerUI(); render(); setStatus(message);
+        }
+
+        class HistoryManager {
+            constructor(maxStates = 50) { this.maxStates = maxStates; this.undoStack = []; this.redoStack = []; this.locked = false; }
+            snapshot() {
+                return {
+                    width: DOC_W, height: DOC_H, imageWidth: IMAGE_W, imageHeight: IMAGE_H, activeLayerIndex,
+                    layers: layers.map(layer => ({
+                        name: layer.name, offsetX: layer.offsetX, offsetY: layer.offsetY,
+                        visible: layer.visible, opacity: layer.opacity,
+                        isBackground: layer.isBackground, locked: layer.locked, bgColor: layer.bgColor,
+                        imageData: layer.ctx.getImageData(0, 0, DOC_W, DOC_H)
+                    }))
+                };
+            }
+            commit(markProjectDirty = true) {
+                if (this.locked) return;
+                this.undoStack.push(this.snapshot());
+                if (this.undoStack.length > this.maxStates) this.undoStack.shift();
+                this.redoStack.length = 0;
+                if (markProjectDirty) projectDirty = true;
+                this.updateButtons();
+            }
+            restore(snapshot, updateStacks = true) {
+                this.locked = true;
+                DOC_W = snapshot.width; DOC_H = snapshot.height;
+                IMAGE_W = snapshot.imageWidth || DOC_W; IMAGE_H = snapshot.imageHeight || DOC_H;
+                rebuildBuffers();
+                selectionMask = new Uint8Array(DOC_W * DOC_H);
+                hasSelection = false; selectionMemory = null; selectionMemoryActive = false; lassoPoints = []; floatingSelection = null; activeHandle = null;
+                layers = snapshot.layers.map(data => {
+                    const layer = new Layer(data.name, {
+                        width: DOC_W, height: DOC_H, offsetX: data.offsetX, offsetY: data.offsetY,
+                        visible: data.visible, opacity: data.opacity, isBackground: data.isBackground, locked: data.locked, bgColor: data.bgColor
+                    });
+                    if (!data.isBackground || data.imageData) {
+                        layer.ctx.clearRect(0, 0, DOC_W, DOC_H);
+                        layer.ctx.putImageData(data.imageData, 0, 0);
+                    }
+                    return layer;
+                });
+                ensureBackgroundAtBottom();
+                activeLayerIndex = clamp(snapshot.activeLayerIndex, 0, layers.length - 1);
+                this.locked = false;
+                syncDimensionInputs(); updateLayerUI(); updateSelectionMemoryUI(); resizeDisplay();
+                if (updateStacks) this.updateButtons();
+            }
+            undo() {
+                if (this.undoStack.length <= 1) return false;
+                this.redoStack.push(this.undoStack.pop());
+                this.restore(this.undoStack[this.undoStack.length - 1]);
+                return true;
+            }
+            redo() {
+                if (!this.redoStack.length) return false;
+                const next = this.redoStack.pop();
+                this.undoStack.push(next); this.restore(next); return true;
+            }
+            reset(markProjectDirty = false) { this.undoStack.length = 0; this.redoStack.length = 0; this.commit(markProjectDirty); }
+            updateButtons() {
+                document.getElementById("btnUndo").disabled = this.undoStack.length <= 1;
+                document.getElementById("btnRedo").disabled = this.redoStack.length === 0;
+            }
+        }
+        const history = new HistoryManager(MAX_HISTORY);
+        function executeUndo() { if (floatingSelection) cancelFloatingSelection(); const ok=history.undo();if(ok)projectDirty=true;setStatus(ok ? "Action annulée." : "Rien à annuler."); }
+        function executeRedo() { if (floatingSelection) cancelFloatingSelection(); const ok=history.redo();if(ok)projectDirty=true;setStatus(ok ? "Action rétablie." : "Rien à rétablir."); }
+
+        function drawLayerWrapped(targetCtx, layer, applyStyle = true) {
+            if (!layer.visible) return;
+            targetCtx.save();
+            targetCtx.imageSmoothingEnabled = false;
+            if (applyStyle) targetCtx.globalAlpha *= layer.opacity;
+            if (layer.isBackground) {
+                targetCtx.drawImage(layer.canvas, 0, 0);
+            } else {
+                const ox = mod(layer.offsetX, DOC_W), oy = mod(layer.offsetY, DOC_H);
+                for (const [x, y] of [[ox, oy], [ox - DOC_W, oy], [ox, oy - DOC_H], [ox - DOC_W, oy - DOC_H]]) targetCtx.drawImage(layer.canvas, x, y);
+            }
+            targetCtx.restore();
+        }
+        function composeLayers() {
+            compCtx.clearRect(0, 0, DOC_W, DOC_H);
+            for (const layer of layers) drawLayerWrapped(compCtx, layer, true);
+        }
+        function getLayerVisualCanvas(layer, applyOpacity = false) {
+            const canvas = createCanvas(DOC_W, DOC_H);
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            const visible = layer.visible; layer.visible = true;
+            drawLayerWrapped(ctx, layer, applyOpacity); layer.visible = visible;
+            return canvas;
+        }
+        function drawWrappedImage(targetCtx, sourceCanvas, x, y, width, height) {
+            drawTransformedWrappedImage(targetCtx, sourceCanvas, x, y, width, height, 0);
+        }
+        function drawTransformedWrappedImage(targetCtx, sourceCanvas, x, y, width, height, angle = 0) {
+            const w = Math.max(1, Math.round(width)), h = Math.max(1, Math.round(height));
+            const scaled = createCanvas(w, h);
+            const sctx = scaled.getContext("2d"); sctx.imageSmoothingEnabled = false;
+            sctx.drawImage(sourceCanvas, 0, 0, w, h);
+            const cx = Number(x) + w / 2, cy = Number(y) + h / 2;
+            const radians = Number(angle || 0) * Math.PI / 180;
+            const radius = Math.hypot(w, h) / 2;
+            const repeatX = Math.max(1, Math.ceil((radius + DOC_W) / DOC_W));
+            const repeatY = Math.max(1, Math.ceil((radius + DOC_H) / DOC_H));
+            targetCtx.save(); targetCtx.imageSmoothingEnabled = false;
+            for (let rx = -repeatX; rx <= repeatX; rx++) for (let ry = -repeatY; ry <= repeatY; ry++) {
+                targetCtx.save();
+                targetCtx.translate(cx + rx * DOC_W, cy + ry * DOC_H);
+                targetCtx.rotate(radians);
+                targetCtx.drawImage(scaled, -w / 2, -h / 2);
+                targetCtx.restore();
+            }
+            targetCtx.restore();
+        }
+        function displayMetrics() {
+            const multiplier = is3x3Mode ? 3 : 1;
+            const tileW = mainCanvas.width / multiplier, tileH = mainCanvas.height / multiplier;
+            return { multiplier, tileW, tileH, sx: tileW / DOC_W, sy: tileH / DOC_H };
+        }
+        function render() {
+            composeLayers();
+            previewCtx.clearRect(0, 0, DOC_W, DOC_H);
+            for (let i = 0; i < layers.length; i++) {
+                const layer = layers[i];
+                drawLayerWrapped(previewCtx, layer, true);
+                if (floatingSelection && i === activeLayerIndex && layer.visible) {
+                    previewCtx.save(); previewCtx.globalAlpha *= layer.opacity;
+                    drawTransformedWrappedImage(previewCtx, floatingSelection.canvas, floatingSelection.x, floatingSelection.y, floatingSelection.w, floatingSelection.h, floatingSelection.angle || 0);
+                    previewCtx.restore();
+                }
+            }
+            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            mainCtx.imageSmoothingEnabled = false;
+            const { tileW, tileH } = displayMetrics();
+            if (is3x3Mode) {
+                for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) mainCtx.drawImage(previewCanvas, col * tileW, row * tileH, tileW, tileH);
+                mainCtx.save(); mainCtx.fillStyle = "rgba(0,0,0,.38)";
+                mainCtx.fillRect(0, 0, mainCanvas.width, tileH);
+                mainCtx.fillRect(0, tileH * 2, mainCanvas.width, tileH);
+                mainCtx.fillRect(0, tileH, tileW, tileH);
+                mainCtx.fillRect(tileW * 2, tileH, tileW, tileH);
+                mainCtx.restore();
+            } else mainCtx.drawImage(previewCanvas, 0, 0, tileW, tileH);
+            renderSelectionOverlay(); updateFloatingButtons();
+        }
+        function resizeDisplay() {
+            const multiplier = is3x3Mode ? 3 : 1;
+            const displayW = Math.max(1, Math.round(DOC_W * SCALE * multiplier));
+            const displayH = Math.max(1, Math.round(DOC_H * SCALE * multiplier));
+            mainCanvas.width = displayW; mainCanvas.height = displayH;
+            selectionCanvas.width = displayW; selectionCanvas.height = displayH;
+            canvasContainer.style.width = `${displayW}px`; canvasContainer.style.height = `${displayH}px`;
+            mainCtx.imageSmoothingEnabled = false; selectionCtx.imageSmoothingEnabled = false;
+            document.getElementById("cursorText").textContent = `${DOC_W} × ${DOC_H} px`;
+            render();
+        }
+        function displayOffset() { const m = displayMetrics(); return { x: is3x3Mode ? m.tileW : 0, y: is3x3Mode ? m.tileH : 0 }; }
+        function renderSelectionOverlay() {
+            selectionCtx.clearRect(0, 0, selectionCanvas.width, selectionCanvas.height);
+            const d = displayOffset(), metrics = displayMetrics(), scaleX = metrics.sx, scaleY = metrics.sy;
+            if (hasSelection) {
+                selectionCtx.save(); selectionCtx.fillStyle = "rgba(55,154,255,.34)";
+                for (let y = 0; y < DOC_H; y++) for (let x = 0; x < DOC_W; x++) if (selectionMask[pixelIndex(x, y)]) selectionCtx.fillRect(d.x + x * scaleX, d.y + y * scaleY, Math.max(1, scaleX), Math.max(1, scaleY));
+                selectionCtx.restore();
+            }
+            if (currentTool === "rect-select" && isPointerDown && !floatingSelection) {
+                const minX = Math.min(startX, currentX), minY = Math.min(startY, currentY);
+                const w = Math.abs(currentX - startX) + 1, h = Math.abs(currentY - startY) + 1;
+                selectionCtx.save(); selectionCtx.strokeStyle = "rgba(255,255,255,.95)"; selectionCtx.lineWidth = 2; selectionCtx.setLineDash([5,4]);
+                selectionCtx.strokeRect(d.x + minX * scaleX, d.y + minY * scaleY, w * scaleX, h * scaleY); selectionCtx.restore();
+            }
+            if (currentTool === "lasso-select" && isPointerDown && lassoPoints.length) {
+                selectionCtx.save(); selectionCtx.strokeStyle = "rgba(255,255,255,.95)"; selectionCtx.lineWidth = 2; selectionCtx.setLineDash([5,4]);
+                selectionCtx.beginPath();
+                lassoPoints.forEach((point, index) => { const px = d.x + (point.x + .5) * scaleX, py = d.y + (point.y + .5) * scaleY; index ? selectionCtx.lineTo(px, py) : selectionCtx.moveTo(px, py); });
+                selectionCtx.stroke(); selectionCtx.restore();
+            }
+            if (floatingSelection) drawSelectionBoundingBox(selectionCtx, d.x, d.y, scaleX, scaleY);
+        }
+        function drawSelectionBoundingBox(ctx, dX, dY, scaleX, scaleY) {
+            const f = floatingSelection; if (!f) return;
+            const x = dX + f.x * scaleX, y = dY + f.y * scaleY, w = f.w * scaleX, h = f.h * scaleY;
+            const hs = Math.max(6, Math.min(11, Math.max(scaleX, scaleY) * .7));
+            ctx.save(); ctx.strokeStyle = "#59adff"; ctx.fillStyle = "#fff"; ctx.lineWidth = 2; ctx.setLineDash([5,3]); ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
+            const points = [[x,y],[x+w/2,y],[x+w,y],[x+w,y+h/2],[x+w,y+h],[x+w/2,y+h],[x,y+h],[x,y+h/2]];
+            for (const [px,py] of points) { ctx.fillRect(px-hs/2, py-hs/2, hs, hs); ctx.strokeRect(px-hs/2, py-hs/2, hs, hs); }
+            ctx.restore();
+        }
+
+        function getGridCoords(event) {
+            const rect = mainCanvas.getBoundingClientRect();
+            let px = (event.clientX - rect.left) * (mainCanvas.width / rect.width);
+            let py = (event.clientY - rect.top) * (mainCanvas.height / rect.height);
+            const metrics = displayMetrics();
+            if (is3x3Mode) { px -= metrics.tileW; py -= metrics.tileH; }
+            return { x: Math.floor(px / metrics.sx), y: Math.floor(py / metrics.sy) };
+        }
+        function visualToRaw(layer, x, y) { return { x: mod(x - layer.offsetX, DOC_W), y: mod(y - layer.offsetY, DOC_H) }; }
+        function isPixelAllowedBySelection(x, y) {
+            const vx = mod(x, DOC_W), vy = mod(y, DOC_H);
+            return !hasSelection || Boolean(selectionMask[pixelIndex(vx, vy)]);
+        }
+        function guardEditableTool() {
+            if (!activeLayer()) return false;
+            if (activeLayer().isBackground) { setStatus("Le fond uni est fixe : modifiez sa couleur directement dans la liste des calques."); return false; }
+            if (activeLayer().locked) { setStatus("Le calque actif est verrouillé."); return false; }
+            if (!activeLayer().visible) { setStatus("Le calque actif est masqué."); return false; }
+            return true;
+        }
+        function paintBrushAt(x, y, erase = false) {
+            if (!guardEditableTool()) return false;
+            const layer = activeLayer();
+            const radius = Math.floor(brushSize / 2), startOffset = brushSize % 2 === 0 ? -(radius - 1) : -radius, endOffset = radius;
+            let changed = false;
+            layer.ctx.save(); layer.ctx.fillStyle = currentColor;
+            for (let dy = startOffset; dy <= endOffset; dy++) for (let dx = startOffset; dx <= endOffset; dx++) {
+                const visualX = mod(x + dx, DOC_W), visualY = mod(y + dy, DOC_H);
+                if (!isPixelAllowedBySelection(visualX, visualY)) continue;
+                const raw = visualToRaw(layer, visualX, visualY);
+                if (erase) layer.ctx.clearRect(raw.x, raw.y, 1, 1); else layer.ctx.fillRect(raw.x, raw.y, 1, 1);
+                changed = true;
+            }
+            layer.ctx.restore(); return changed;
+        }
+        function drawLine(x0, y0, x1, y1, erase = false) {
+            let dx = Math.abs(x1-x0), dy = Math.abs(y1-y0), sx = x0<x1?1:-1, sy = y0<y1?1:-1, err = dx-dy, changed = false;
+            while (true) {
+                changed = paintBrushAt(x0,y0,erase) || changed;
+                if (x0===x1 && y0===y1) break;
+                const e2 = 2*err; if (e2>-dy) { err-=dy; x0+=sx; } if (e2<dx) { err+=dx; y0+=sy; }
+            }
+            return changed;
+        }
+        function getPixelRGBA(data, x, y, width = DOC_W) { const i = (y*width+x)*4; return [data[i],data[i+1],data[i+2],data[i+3]]; }
+        function setPixelRGBA(data, x, y, rgba, width = DOC_W) { const i=(y*width+x)*4; data[i]=rgba[0];data[i+1]=rgba[1];data[i+2]=rgba[2];data[i+3]=rgba[3]; }
+        function hexToRgba(hex) { const v=parseInt(hex.slice(1),16); return [(v>>16)&255,(v>>8)&255,v&255,255]; }
+        function colorDistance(a,b) { const dr=a[0]-b[0],dg=a[1]-b[1],db=a[2]-b[2],da=a[3]-b[3]; return Math.sqrt(dr*dr+dg*dg+db*db+da*da); }
+
+        function tolerantFloodFill(startVisualX, startVisualY, fillHex) {
+            if (!guardEditableTool()) return false;
+            const layer = activeLayer();
+            const sx = mod(startVisualX,DOC_W), sy = mod(startVisualY,DOC_H);
+            if (!isPixelAllowedBySelection(sx,sy)) return false;
+            const visual = getLayerVisualCanvas(layer,false), ctx = visual.getContext("2d",{willReadFrequently:true});
+            const imageData = ctx.getImageData(0,0,DOC_W,DOC_H), data=imageData.data;
+            const target=getPixelRGBA(data,sx,sy), fill=hexToRgba(fillHex), tolerance=Number(document.getElementById("tolerance").value);
+            if (colorDistance(target,fill)===0) return false;
+            const total=DOC_W*DOC_H, queue=new Int32Array(total), visited=new Uint8Array(total);
+            let head=0,tail=0; queue[tail++]=pixelIndex(sx,sy); visited[pixelIndex(sx,sy)]=1; let changed=0;
+            while(head<tail){
+                const idx=queue[head++], x=idx%DOC_W, y=Math.floor(idx/DOC_W);
+                if (!isPixelAllowedBySelection(x,y) || colorDistance(getPixelRGBA(data,x,y),target)>tolerance) continue;
+                setPixelRGBA(data,x,y,fill); changed++;
+                const neighbors=[[x-1,y],[x+1,y],[x,y-1],[x,y+1]];
+                for(const [nx,ny] of neighbors){ if(nx<0||nx>=DOC_W||ny<0||ny>=DOC_H)continue; const ni=pixelIndex(nx,ny); if(!visited[ni]){visited[ni]=1;queue[tail++]=ni;} }
+            }
+            if(!changed)return false;
+            layer.ctx.clearRect(0,0,DOC_W,DOC_H);
+            const rawCanvas=createCanvas(DOC_W,DOC_H),rawCtx=rawCanvas.getContext("2d"); rawCtx.putImageData(imageData,0,0);
+            const ox=mod(-layer.offsetX,DOC_W),oy=mod(-layer.offsetY,DOC_H);
+            for(const [x,y] of [[ox,oy],[ox-DOC_W,oy],[ox,oy-DOC_H],[ox-DOC_W,oy-DOC_H]]) layer.ctx.drawImage(rawCanvas,x,y);
+            return true;
+        }
+
+        function beginSelectionOperation(mode) {
+            if (selectionMemoryActive && selectionMemory?.length === selectionMask.length && mode === "replace") selectionMask.set(selectionMemory);
+            else if (mode === "replace") selectionMask.fill(0);
+        }
+        function finalizeSelectionOperation() {
+            updateSelectionState();
+            if (selectionMemoryActive) selectionMemory = selectionMask.slice();
+            updateSelectionMemoryUI();
+            render();
+        }
+        function applyRectSelection(x1,y1,x2,y2,mode="replace") {
+            const minX=clamp(Math.min(x1,x2),0,DOC_W-1),minY=clamp(Math.min(y1,y2),0,DOC_H-1),maxX=clamp(Math.max(x1,x2),0,DOC_W-1),maxY=clamp(Math.max(y1,y2),0,DOC_H-1);
+            beginSelectionOperation(mode);
+            for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)selectionMask[pixelIndex(x,y)]=mode==="subtract"?0:1;
+            finalizeSelectionOperation();
+        }
+        function pointInPolygon(px,py,points){
+            let inside=false;
+            for(let i=0,j=points.length-1;i<points.length;j=i++){
+                const xi=points[i].x+.5,yi=points[i].y+.5,xj=points[j].x+.5,yj=points[j].y+.5;
+                const intersect=((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi||1e-9)+xi);
+                if(intersect)inside=!inside;
+            }
+            return inside;
+        }
+        function applyLassoSelection(points,mode="replace"){
+            if(points.length<3)return;
+            beginSelectionOperation(mode);
+            const minX=clamp(Math.floor(Math.min(...points.map(p=>p.x))),0,DOC_W-1),maxX=clamp(Math.ceil(Math.max(...points.map(p=>p.x))),0,DOC_W-1);
+            const minY=clamp(Math.floor(Math.min(...points.map(p=>p.y))),0,DOC_H-1),maxY=clamp(Math.ceil(Math.max(...points.map(p=>p.y))),0,DOC_H-1);
+            for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)if(pointInPolygon(x+.5,y+.5,points))selectionMask[pixelIndex(x,y)]=mode==="subtract"?0:1;
+            finalizeSelectionOperation();
+        }
+        function applyMagicWand(startVisualX,startVisualY,mode="replace"){
+            const layer = activeLayer();
+            if (!layer) return;
+            const visual = getLayerVisualCanvas(layer,false);
+            const sx=mod(startVisualX,DOC_W),sy=mod(startVisualY,DOC_H),data=visual.getContext("2d",{willReadFrequently:true}).getImageData(0,0,DOC_W,DOC_H).data,target=getPixelRGBA(data,sx,sy),tol=Number(document.getElementById("tolerance").value);
+            const matched=new Uint8Array(DOC_W*DOC_H),visited=new Uint8Array(DOC_W*DOC_H),queue=new Int32Array(DOC_W*DOC_H); let head=0,tail=0;
+            queue[tail++]=pixelIndex(sx,sy);visited[pixelIndex(sx,sy)]=1;
+            while(head<tail){const idx=queue[head++],x=idx%DOC_W,y=Math.floor(idx/DOC_W);if(colorDistance(getPixelRGBA(data,x,y),target)>tol)continue;matched[idx]=1;for(const[nx,ny]of[[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<0||nx>=DOC_W||ny<0||ny>=DOC_H)continue;const ni=pixelIndex(nx,ny);if(!visited[ni]){visited[ni]=1;queue[tail++]=ni;}}}
+            beginSelectionOperation(mode);
+            for(let i=0;i<matched.length;i++)if(matched[i])selectionMask[i]=mode==="subtract"?0:1;
+            finalizeSelectionOperation();setStatus(`${countSelectedPixels()} pixel(s) sélectionné(s) sur le calque actif.`);
+        }
+        function updateSelectionState(){hasSelection=selectionMask.some(v=>v!==0);}
+        function countSelectedPixels(){let n=0;for(const v of selectionMask)n+=v?1:0;return n;}
+        function updateSelectionMemoryUI(){
+            const remember=document.getElementById("btnMemorizeSelection"),forget=document.getElementById("btnForgetSelection");
+            if(!remember||!forget)return;
+            remember.classList.toggle("memory-active",selectionMemoryActive);
+            remember.textContent=selectionMemoryActive?"Mémoire active":"Mémoriser sélection";
+            forget.disabled=!selectionMemoryActive;
+        }
+        function memorizeSelection(){
+            if(!hasSelection)return setStatus("Aucune sélection à mémoriser.");
+            selectionMemory=selectionMask.slice();selectionMemoryActive=true;updateSelectionMemoryUI();setStatus("Sélection mémorisée : les prochaines sélections seront fusionnées automatiquement.");
+        }
+        function clearSelectionMemory(){selectionMemory=null;selectionMemoryActive=false;updateSelectionMemoryUI();setStatus("Mémoire de sélection effacée.");}
+        function invertSelection(){
+            for(let i=0;i<selectionMask.length;i++)selectionMask[i]=selectionMask[i]?0:1;
+            updateSelectionState();if(selectionMemoryActive)selectionMemory=selectionMask.slice();updateSelectionMemoryUI();render();setStatus(`${countSelectedPixels()} pixel(s) après inversion.`);
+        }
+        function clearSelection(shouldRender=true){selectionMask.fill(0);hasSelection=false;lassoPoints=[];if(shouldRender)render();}
+        function selectAll(){selectionMask.fill(1);hasSelection=true;if(selectionMemoryActive)selectionMemory=selectionMask.slice();updateSelectionMemoryUI();render();}
+        function getSelectionBounds(){let minX=DOC_W,minY=DOC_H,maxX=-1,maxY=-1;for(let y=0;y<DOC_H;y++)for(let x=0;x<DOC_W;x++)if(selectionMask[pixelIndex(x,y)]){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return maxX<0?null:{x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1};}
+        function buildSelectionCanvas(){
+            const bounds=getSelectionBounds();if(!bounds||!activeLayer())return null;
+            const visual=getLayerVisualCanvas(activeLayer(),false),src=visual.getContext("2d",{willReadFrequently:true}).getImageData(0,0,DOC_W,DOC_H),out=createCanvas(bounds.w,bounds.h),outCtx=out.getContext("2d"),dest=outCtx.createImageData(bounds.w,bounds.h);
+            for(let y=0;y<bounds.h;y++)for(let x=0;x<bounds.w;x++){const sx=bounds.x+x,sy=bounds.y+y;if(!selectionMask[pixelIndex(sx,sy)])continue;const si=(sy*DOC_W+sx)*4,di=(y*bounds.w+x)*4;for(let c=0;c<4;c++)dest.data[di+c]=src.data[si+c];}
+            outCtx.putImageData(dest,0,0);return{canvas:out,bounds};
+        }
+        function copySelection(){if(!hasSelection)return setStatus("Aucune sélection à copier.");const result=buildSelectionCanvas();if(!result)return;clipboardBuffer=cloneCanvas(result.canvas);setStatus(`Sélection copiée (${result.bounds.w} × ${result.bounds.h}).`);}
+        function clearSelectedPixelsInternal(){if(!guardEditableTool())return false;const layer=activeLayer();let changed=false;for(let y=0;y<DOC_H;y++)for(let x=0;x<DOC_W;x++)if(selectionMask[pixelIndex(x,y)]){const raw=visualToRaw(layer,x,y);layer.ctx.clearRect(raw.x,raw.y,1,1);changed=true;}return changed;}
+        function deleteSelectedPixels(){
+            if(floatingSelection){cancelFloatingSelection();return;}
+            if(!hasSelection)return setStatus("Aucune sélection à effacer.");
+            if(clearSelectedPixelsInternal()){history.commit();render();setStatus("Pixels sélectionnés effacés.");}
+        }
+        function cutSelection(){
+            if(!hasSelection||!guardEditableTool())return setStatus("Aucune sélection exploitable à couper.");
+            const result=buildSelectionCanvas();if(!result)return;
+            const cancelSnapshot=history.snapshot();clipboardBuffer=cloneCanvas(result.canvas);clearSelectedPixelsInternal();
+            floatingSelection={canvas:cloneCanvas(result.canvas),x:result.bounds.x,y:result.bounds.y,w:result.bounds.w,h:result.bounds.h,angle:0,cancelSnapshot};
+            clearSelection(false);render();setStatus("Sélection coupée et placée en transformation.");
+        }
+        function pasteSelection(asNewLayer=false){
+            if(!clipboardBuffer)return setStatus("Le presse-papiers interne est vide.");
+            if(floatingSelection)cancelFloatingSelection();
+            const cancelSnapshot=history.snapshot();
+            if(asNewLayer||activeLayer().isBackground||activeLayer().locked){layers.push(new Layer("Collage"));activeLayerIndex=layers.length-1;}
+            floatingSelection={canvas:cloneCanvas(clipboardBuffer),x:0,y:0,w:clipboardBuffer.width,h:clipboardBuffer.height,angle:0,cancelSnapshot};
+            clearSelection(false);updateLayerUI();render();setStatus("Collage flottant : déplacez ou redimensionnez, puis validez.");
+        }
+        function cloneCanvas(source){const c=createCanvas(source.width,source.height);c.getContext("2d").drawImage(source,0,0);return c;}
+
+        const HANDLE_CURSORS={nw:"nwse-resize",se:"nwse-resize",ne:"nesw-resize",sw:"nesw-resize",n:"ns-resize",s:"ns-resize",e:"ew-resize",w:"ew-resize",move:"move"};
+        function hitFloatingHandle(gx,gy){
+            const f=floatingSelection;if(!f)return null;const t=Math.max(.45,7/Math.max(SCALE,.05)),left=f.x,right=f.x+f.w,top=f.y,bottom=f.y+f.h,mx=(left+right)/2,my=(top+bottom)/2;
+            const near=(a,b)=>Math.abs(a-b)<=t;
+            if(near(gx,left)&&near(gy,top))return"nw";if(near(gx,right)&&near(gy,top))return"ne";if(near(gx,left)&&near(gy,bottom))return"sw";if(near(gx,right)&&near(gy,bottom))return"se";
+            if(near(gy,top)&&gx>=left&&gx<=right)return"n";if(near(gy,bottom)&&gx>=left&&gx<=right)return"s";
+            if(near(gx,left)&&gy>=top&&gy<=bottom)return"w";if(near(gx,right)&&gy>=top&&gy<=bottom)return"e";
+            if(gx>=left&&gx<=right&&gy>=top&&gy<=bottom)return"move";return null;
+        }
+        function updateTransformCursor(gx,gy){const h=hitFloatingHandle(gx,gy);mainCanvas.style.cursor=HANDLE_CURSORS[h]||"default";}
+        function beginFloatingInteraction(gx,gy){
+            activeHandle=hitFloatingHandle(gx,gy);if(!activeHandle)return;
+            const f=floatingSelection;f.dragStartX=gx;f.dragStartY=gy;f.initialX=f.x;f.initialY=f.y;f.initialW=f.w;f.initialH=f.h;
+        }
+        function updateFloatingInteraction(gx,gy,keepRatio){
+            const f=floatingSelection;if(!f||!activeHandle)return;
+            const dx=gx-f.dragStartX,dy=gy-f.dragStartY;
+            if(activeHandle==="move"){f.x=Math.round(f.initialX+dx);f.y=Math.round(f.initialY+dy);render();return;}
+            let left=f.initialX,right=f.initialX+f.initialW,top=f.initialY,bottom=f.initialY+f.initialH;
+            if(activeHandle.includes("w"))left=Math.min(right-1,f.initialX+dx);if(activeHandle.includes("e"))right=Math.max(left+1,f.initialX+f.initialW+dx);
+            if(activeHandle.includes("n"))top=Math.min(bottom-1,f.initialY+dy);if(activeHandle.includes("s"))bottom=Math.max(top+1,f.initialY+f.initialH+dy);
+            if(keepRatio&&activeHandle.length===2){const ratio=f.initialW/f.initialH;let w=right-left,h=bottom-top;if(w/h>ratio)h=Math.max(1,Math.round(w/ratio));else w=Math.max(1,Math.round(h*ratio));if(activeHandle.includes("w"))left=right-w;else right=left+w;if(activeHandle.includes("n"))top=bottom-h;else bottom=top+h;}
+            f.x=Math.round(left);f.y=Math.round(top);f.w=Math.max(1,Math.round(right-left));f.h=Math.max(1,Math.round(bottom-top));render();
+        }
+        function bakeFloatingSelection(){
+            if(!floatingSelection)return;
+            if(activeLayer().isBackground||activeLayer().locked){layers.push(new Layer("Collage"));activeLayerIndex=layers.length-1;}
+            const layer=activeLayer();drawTransformedWrappedImage(layer.ctx,floatingSelection.canvas,floatingSelection.x-layer.offsetX,floatingSelection.y-layer.offsetY,floatingSelection.w,floatingSelection.h,floatingSelection.angle||0);
+            floatingSelection=null;activeHandle=null;history.commit();updateLayerUI();render();setStatus("Transformation validée.");
+        }
+        function cancelFloatingSelection(){
+            if(!floatingSelection)return;
+            const snapshot=floatingSelection.cancelSnapshot;floatingSelection=null;activeHandle=null;
+            if(snapshot)history.restore(snapshot,false);else render();
+            updateFloatingButtons();setStatus("Transformation annulée.");
+        }
+        function normalizeAngle(value){const numeric=Number(String(value).replace(",",".").replace("°",""));if(!Number.isFinite(numeric))return null;return ((numeric%360)+360)%360;}
+        function setFloatingAngle(value,source="manual"){
+            if(!floatingSelection)return;const angle=normalizeAngle(value);if(angle===null)return setStatus("Angle invalide.");
+            floatingSelection.angle=angle;
+            document.getElementById("rotationRange").value=String(Math.round(angle)%361);
+            document.getElementById("rotationAngle").value=`${String(Number(angle.toFixed(6))).replace(".",",")}°`;
+            render();if(source==="manual")setStatus(`Rotation : ${String(Number(angle.toFixed(6))).replace(".",",")}°.`);
+        }
+        function updateFloatingButtons(){
+            const enabled=Boolean(floatingSelection);document.getElementById("btnBake").disabled=!enabled;document.getElementById("btnCancelFloat").disabled=!enabled;
+            const rotation=document.getElementById("rotationControl");rotation.hidden=!enabled;
+            if(enabled){const angle=floatingSelection.angle||0;document.getElementById("rotationRange").value=String(Math.round(angle)%361);document.getElementById("rotationAngle").value=`${String(Number(angle.toFixed(6))).replace(".",",")}°`;}
+        }
+
+        mainCanvas.addEventListener("pointerdown",event=>{
+            if(event.button!==0&&event.pointerType==="mouse")return;
+            event.preventDefault();mainCanvas.setPointerCapture(event.pointerId);
+            const c=getGridCoords(event);startX=currentX=c.x;startY=currentY=c.y;isPointerDown=true;actionDirty=false;selectionMode=event.altKey?"subtract":event.shiftKey?"add":"replace";
+            if(floatingSelection){beginFloatingInteraction(c.x,c.y);return;}
+            if(currentTool==="pencil"||currentTool==="eraser"){actionDirty=paintBrushAt(c.x,c.y,currentTool==="eraser");render();}
+            else if(currentTool==="fill"){if(tolerantFloodFill(c.x,c.y,currentColor)){history.commit();render();setStatus("Zone remplie avec tolérance.");}isPointerDown=false;}
+            else if(currentTool==="wand"){applyMagicWand(c.x,c.y,selectionMode);isPointerDown=false;}
+            else if(currentTool==="lasso-select"){lassoPoints=[c];renderSelectionOverlay();}
+        });
+        mainCanvas.addEventListener("pointermove",event=>{
+            const c=getGridCoords(event),vx=mod(c.x,DOC_W),vy=mod(c.y,DOC_H);
+            document.getElementById("cursorText").textContent=`X ${vx} · Y ${vy} · ${DOC_W} × ${DOC_H} px`;
+            if(floatingSelection&&!isPointerDown){updateTransformCursor(c.x,c.y);return;}
+            if(!isPointerDown)return;
+            event.preventDefault();currentX=c.x;currentY=c.y;
+            if(floatingSelection){updateFloatingInteraction(c.x,c.y,event.shiftKey);return;}
+            if(currentTool==="pencil"||currentTool==="eraser"){actionDirty=drawLine(startX,startY,currentX,currentY,currentTool==="eraser")||actionDirty;startX=currentX;startY=currentY;render();}
+            else if(currentTool==="move"){
+                if(!guardEditableTool())return;
+                const dx=currentX-startX,dy=currentY-startY;if(dx||dy){activeLayer().offsetX+=dx;activeLayer().offsetY+=dy;actionDirty=true;startX=currentX;startY=currentY;updateLayerUI(false);render();}
+            }else if(currentTool==="rect-select")renderSelectionOverlay();
+            else if(currentTool==="lasso-select"){
+                const last=lassoPoints[lassoPoints.length-1];if(!last||last.x!==c.x||last.y!==c.y)lassoPoints.push({x:c.x,y:c.y});renderSelectionOverlay();
+            }
+        });
+        function finishPointerAction(event){
+            if(!isPointerDown)return;
+            if(currentTool==="rect-select"&&!floatingSelection){applyRectSelection(startX,startY,currentX,currentY,selectionMode);setStatus(`${countSelectedPixels()} pixel(s) sélectionné(s).`);}
+            else if(currentTool==="lasso-select"&&!floatingSelection){applyLassoSelection(lassoPoints,selectionMode);lassoPoints=[];setStatus(`${countSelectedPixels()} pixel(s) sélectionné(s) au lasso.`);}
+            else if(actionDirty){history.commit();updateLayerUI();setStatus(currentTool==="move"?"Calque déplacé.":"Trait enregistré.");}
+            isPointerDown=false;actionDirty=false;activeHandle=null;
+            try{if(event&&mainCanvas.hasPointerCapture(event.pointerId))mainCanvas.releasePointerCapture(event.pointerId);}catch(_){}
+            render();
+        }
+        mainCanvas.addEventListener("pointerup",finishPointerAction);mainCanvas.addEventListener("pointercancel",finishPointerAction);mainCanvas.addEventListener("pointerleave",event=>{if(floatingSelection&&!isPointerDown)mainCanvas.style.cursor="default";});mainCanvas.addEventListener("contextmenu",e=>e.preventDefault());
+
+        mainCanvas.addEventListener("wheel",event=>{
+            event.preventDefault();
+            const old=SCALE;
+            const step=old<1?.05:old<4?.25:1;
+            const next=clamp(Number((old+(event.deltaY<0?step:-step)).toFixed(2)),.05,40);if(next===old)return;
+            const rect=canvasContainer.getBoundingClientRect(),localX=event.clientX-rect.left,localY=event.clientY-rect.top;
+            SCALE=next;document.getElementById("zoomRange").value=SCALE;document.getElementById("zoomValue").textContent=`${formatZoom(SCALE)}×`;resizeDisplay();
+            const factor=next/old;workspace.scrollLeft+=localX*(factor-1);workspace.scrollTop+=localY*(factor-1);
+        },{passive:false});
+
+        function clearDropMarkers(){document.querySelectorAll(".layer-item").forEach(item=>item.classList.remove("drop-before","drop-after","dragging"));dragSlot=null;}
+        function renderLayerThumbnail(layer,canvas){
+            const ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=false;
+            const visual=getLayerVisualCanvas(layer,true);const scale=Math.min(canvas.width/DOC_W,canvas.height/DOC_H);const w=Math.max(1,DOC_W*scale),h=Math.max(1,DOC_H*scale);
+            ctx.drawImage(visual,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+        }
+        function updateLayerUI(updateControls=true){
+            const list=document.getElementById("layerList");list.innerHTML="";
+            const visualIndices=[];for(let i=layers.length-1;i>=0;i--)visualIndices.push(i);
+            visualIndices.forEach((i,visualPos)=>{
+                const layer=layers[i],item=document.createElement("div");
+                item.className=`layer-item${i===activeLayerIndex?" active":""}${layer.isBackground?" background-layer":""}${layer.locked?" locked-layer":""}`;item.dataset.index=i;item.draggable=!layer.isBackground&&!layer.locked;
+                const visibility=document.createElement("button");visibility.className=`small icon visibility${layer.visible?"":" off"}`;visibility.textContent=layer.visible?"●":"○";visibility.title=layer.visible?"Masquer":"Afficher";visibility.onclick=e=>{e.stopPropagation();toggleLayerVisibility(i);};
+                const thumbnail=document.createElement("canvas");thumbnail.width=40;thumbnail.height=40;thumbnail.className="layer-preview";thumbnail.title="Aperçu du calque";renderLayerThumbnail(layer,thumbnail);
+                const text=document.createElement("div");
+                const name=document.createElement("div");name.className="layer-name";name.textContent=layer.name;name.ondblclick=e=>{e.stopPropagation();setActiveLayer(i);if(!layer.locked&&!layer.isBackground){document.getElementById("layerName").focus();document.getElementById("layerName").select();}};
+                const meta=document.createElement("div");meta.className="layer-meta";meta.textContent=layer.isBackground?"Fond fixe · couleur modifiable":`${Math.round(layer.opacity*100)} % · ${layer.locked?"verrouillé":"décalage "+mod(layer.offsetX,DOC_W)+", "+mod(layer.offsetY,DOC_H)}`;text.append(name,meta);
+                const actions=document.createElement("div");actions.className="layer-actions";
+                if(layer.isBackground){const color=document.createElement("input");color.type="color";color.value=layer.bgColor;color.className="bg-color-mini";color.title="Couleur du fond";color.onpointerdown=e=>e.stopPropagation();color.onclick=e=>e.stopPropagation();color.oninput=e=>{layer.initBackground(e.target.value);render();};color.onchange=e=>{layer.initBackground(e.target.value);history.commit();updateLayerUI();setStatus("Couleur du fond modifiée.");};actions.append(color);const fixed=document.createElement("span");fixed.textContent="🔒";fixed.title="Fond fixe";actions.append(fixed);}
+                else{const lock=document.createElement("button");lock.className="small icon";lock.textContent=layer.locked?"🔒":"🔓";lock.title=layer.locked?"Déverrouiller":"Verrouiller";lock.onclick=e=>{e.stopPropagation();toggleLayerLock(i);};actions.append(lock);const grip=document.createElement("span");grip.className="drag-hint";grip.textContent="⋮⋮";grip.title=layer.locked?"Calque verrouillé":"Glisser pour réordonner";actions.append(grip);}
+                const remove=document.createElement("button");remove.className="small icon danger";remove.textContent="×";remove.disabled=layers.length<=1||layer.locked||layer.isBackground;remove.onclick=e=>{e.stopPropagation();deleteLayer(i);};actions.append(remove);
+                item.append(visibility,thumbnail,text,actions);item.onclick=()=>setActiveLayer(i);
+                item.addEventListener("dragstart",event=>{if(layer.isBackground||layer.locked||event.target.closest("button,input")){event.preventDefault();return;}draggedLayer=layer;item.classList.add("dragging");event.dataTransfer.effectAllowed="move";event.dataTransfer.setData("text/plain",layer.name);});
+                item.addEventListener("dragover",event=>{if(!draggedLayer||draggedLayer===layer||draggedLayer.locked)return;event.preventDefault();document.querySelectorAll(".layer-item").forEach(el=>el.classList.remove("drop-before","drop-after"));const rect=item.getBoundingClientRect();let before=event.clientY<rect.top+rect.height/2;if(layer.isBackground)before=true;item.classList.add(before?"drop-before":"drop-after");dragSlot=before?visualPos:visualPos+1;event.dataTransfer.dropEffect="move";});
+                item.addEventListener("drop",event=>{event.preventDefault();if(!draggedLayer||draggedLayer.locked||dragSlot===null)return;const visual=layers.slice().reverse(),sourcePos=visual.indexOf(draggedLayer);if(sourcePos<0)return;visual.splice(sourcePos,1);let slot=dragSlot;if(sourcePos<slot)slot--;const bgPos=visual.findIndex(l=>l.isBackground);if(bgPos>=0)slot=Math.min(slot,bgPos);slot=clamp(slot,0,visual.length);visual.splice(slot,0,draggedLayer);layers=visual.reverse();ensureBackgroundAtBottom();activeLayerIndex=layers.indexOf(draggedLayer);draggedLayer=null;clearDropMarkers();afterLayerStructureChange("Calque réordonné par glisser-déposer.");});
+                item.addEventListener("dragend",()=>{draggedLayer=null;clearDropMarkers();});
+                list.appendChild(item);
+            });
+            if(updateControls&&activeLayer()){
+                const layer=activeLayer(),locked=layer.locked||layer.isBackground;
+                const nameInput=document.getElementById("layerName");nameInput.value=layer.name;nameInput.disabled=locked;
+                const opacity=document.getElementById("layerOpacity");opacity.value=Math.round(layer.opacity*100);opacity.disabled=locked;document.getElementById("opacityValue").textContent=`${Math.round(layer.opacity*100)} %`;
+                document.getElementById("moveLayerUp").disabled=locked||activeLayerIndex===layers.length-1;
+                document.getElementById("moveLayerDown").disabled=locked||activeLayerIndex<=0||layers[activeLayerIndex-1]?.isBackground;
+                document.getElementById("activeLayerLock").disabled=layer.isBackground;document.getElementById("activeLayerLock").textContent=layer.locked?"Déverrouiller":"Verrouiller";
+                document.getElementById("deleteActiveLayerBtn").disabled=layers.length<=1||locked;
+                document.getElementById("resetOffsetBtn").disabled=locked;document.getElementById("flattenOffsetBtn").disabled=locked;
+            }
+        }
+        document.getElementById("layerName").addEventListener("change",event=>{if(!activeLayer()||activeLayer().locked||activeLayer().isBackground||floatingSelection)return;const value=event.target.value.trim();if(!value)return;activeLayer().name=value;history.commit();updateLayerUI();setStatus("Calque renommé.");});
+        document.getElementById("layerOpacity").addEventListener("input",event=>{if(!activeLayer()||activeLayer().locked||activeLayer().isBackground||floatingSelection)return;activeLayer().opacity=Number(event.target.value)/100;document.getElementById("opacityValue").textContent=`${event.target.value} %`;render();updateLayerUI(false);});
+        document.getElementById("layerOpacity").addEventListener("change",()=>{if(floatingSelection||activeLayer()?.locked||activeLayer()?.isBackground)return;history.commit();updateLayerUI();setStatus("Opacité modifiée.");});
+
+        function setTool(toolName){
+            if(floatingSelection)return setStatus("Validez ou annulez la transformation flottante d’abord.");
+            currentTool=toolName;document.querySelectorAll("#toolGrid button").forEach(b=>b.classList.remove("active"));const button=document.getElementById(`btn-${toolName}`);if(button)button.classList.add("active");
+            document.getElementById("brushControl").hidden=!["pencil","eraser"].includes(toolName);
+            document.getElementById("toleranceControl").hidden=!["wand","fill"].includes(toolName);
+            mainCanvas.style.cursor=toolName==="move"?"grab":["rect-select","lasso-select","wand"].includes(toolName)?"cell":"crosshair";
+            setStatus(`Outil actif : ${button?button.textContent:toolName}.`);
+        }
+        function toggle3x3(){is3x3Mode=!is3x3Mode;const b=document.getElementById("btn-3x3");b.textContent=is3x3Mode?"Désactiver aperçu 3×3":"Activer aperçu 3×3 seamless";b.classList.toggle("active",is3x3Mode);resizeDisplay();setStatus(is3x3Mode?"Aperçu 3×3 activé.":"Aperçu 3×3 désactivé.");}
+        document.getElementById("colorPicker").addEventListener("input",e=>currentColor=e.target.value);
+        document.getElementById("brushSize").addEventListener("input",e=>{brushSize=Number(e.target.value);document.getElementById("brushValue").textContent=`${brushSize} px`;});
+        document.getElementById("tolerance").addEventListener("input",e=>document.getElementById("tolValue").textContent=e.target.value);
+        function formatZoom(value){return Number(value)<1?Number(value).toFixed(2).replace(/0+$/,"").replace(/\.$/,""):String(Number(value));}
+        document.getElementById("zoomRange").addEventListener("input",e=>{SCALE=Number(e.target.value);document.getElementById("zoomValue").textContent=`${formatZoom(SCALE)}×`;resizeDisplay();});
+        document.getElementById("rotationRange").addEventListener("input",e=>setFloatingAngle(e.target.value,"range"));
+        document.getElementById("rotationAngle").addEventListener("change",e=>setFloatingAngle(e.target.value,"manual"));
+        document.getElementById("rotationAngle").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();setFloatingAngle(e.target.value,"manual");e.target.blur();}});
+
+        function syncDimensionInputs(){
+            const canvasRatio=DOC_W/DOC_H,imageRatio=IMAGE_W/IMAGE_H;
+            const cw=document.getElementById("canvasWidth"),ch=document.getElementById("canvasHeight"),iw=document.getElementById("imageWidth"),ih=document.getElementById("imageHeight");
+            cw.value=DOC_W;ch.value=DOC_H;cw.dataset.ratio=canvasRatio;ch.dataset.ratio=canvasRatio;
+            iw.value=IMAGE_W;ih.value=IMAGE_H;iw.dataset.ratio=imageRatio;ih.dataset.ratio=imageRatio;
+            document.getElementById("cursorText").textContent=`${DOC_W} × ${DOC_H} px`;
+        }
+        function bindRatioInputs(widthId,heightId,lockId){
+            let internal=false;
+            const w=document.getElementById(widthId),h=document.getElementById(heightId),lock=document.getElementById(lockId);
+            const refreshRatio=()=>{const ratio=validDimension(w.value)/validDimension(h.value);w.dataset.ratio=ratio;h.dataset.ratio=ratio;};
+            lock.addEventListener("change",refreshRatio);
+            w.addEventListener("input",()=>{if(internal||!lock.checked)return;const ratio=Number(w.dataset.ratio)||1;internal=true;h.value=validDimension(validDimension(w.value)/ratio);internal=false;});
+            h.addEventListener("input",()=>{if(internal||!lock.checked)return;const ratio=Number(h.dataset.ratio)||1;internal=true;w.value=validDimension(validDimension(h.value)*ratio);internal=false;});
+        }
+        bindRatioInputs("canvasWidth","canvasHeight","canvasRatioLock");bindRatioInputs("imageWidth","imageHeight","imageRatioLock");
+
+        function clearSelectionStateForResize(){selectionMask=new Uint8Array(DOC_W*DOC_H);hasSelection=false;selectionMemory=null;selectionMemoryActive=false;lassoPoints=[];updateSelectionMemoryUI();}
+        function resizeCanvasOnly(newW,newH,commit=true){
+            newW=validDimension(newW);newH=validDimension(newH);if(newW===DOC_W&&newH===DOC_H)return false;
+            if(floatingSelection)cancelFloatingSelection();
+            const backups=layers.map(layer=>cloneCanvas(layer.canvas));DOC_W=newW;DOC_H=newH;rebuildBuffers();clearSelectionStateForResize();
+            layers.forEach((layer,index)=>{const old=backups[index];layer.setDimensions(DOC_W,DOC_H);if(layer.isBackground)layer.initBackground(layer.bgColor);else layer.ctx.drawImage(old,0,0);});
+            syncDimensionInputs();resizeDisplay();updateLayerUI();if(commit)history.commit();setStatus(`Canvas redimensionné en ${DOC_W} × ${DOC_H}.`);return true;
+        }
+        function resizeImageOnly(newW,newH,commit=true){
+            newW=validDimension(newW);newH=validDimension(newH);if(newW===IMAGE_W&&newH===IMAGE_H)return false;
+            if(layers.some(layer=>!layer.isBackground&&layer.locked)){setStatus("Déverrouillez les calques avant de redimensionner l’image.");return false;}
+            if(floatingSelection)cancelFloatingSelection();
+            const sourceW=Math.max(1,Math.min(IMAGE_W,DOC_W)),sourceH=Math.max(1,Math.min(IMAGE_H,DOC_H));
+            layers.forEach(layer=>{
+                if(layer.isBackground)return;
+                const visual=getLayerVisualCanvas(layer,false),out=createCanvas(DOC_W,DOC_H),ctx=out.getContext("2d");ctx.imageSmoothingEnabled=false;
+                ctx.drawImage(visual,0,0,sourceW,sourceH,0,0,newW,newH);
+                layer.ctx.clearRect(0,0,DOC_W,DOC_H);layer.ctx.drawImage(out,0,0);layer.offsetX=layer.offsetY=0;
+            });
+            IMAGE_W=newW;IMAGE_H=newH;selectionMask.fill(0);hasSelection=false;selectionMemory=null;selectionMemoryActive=false;updateSelectionMemoryUI();syncDimensionInputs();updateLayerUI();render();if(commit)history.commit();
+            const clipped=newW>DOC_W||newH>DOC_H;setStatus(`Image redimensionnée en ${IMAGE_W} × ${IMAGE_H}, canvas inchangé (${DOC_W} × ${DOC_H})${clipped?" — dépassement rogné":""}.`);return true;
+        }
+        function applyCanvasResize(){resizeCanvasOnly(document.getElementById("canvasWidth").value,document.getElementById("canvasHeight").value,true);}
+        function applyImageResize(){resizeImageOnly(document.getElementById("imageWidth").value,document.getElementById("imageHeight").value,true);}
+
+        function openFilePicker(type){document.getElementById(type==="png"?"pngInput":"projectInput").click();}
+        document.getElementById("pngInput").addEventListener("change",e=>{const file=e.target.files[0];if(file)loadPNGAsLayer(file);e.target.value="";});
+        document.getElementById("newPngInput").addEventListener("change",e=>{const file=e.target.files[0];if(file)loadNewPNGProject(file);e.target.value="";});
+        document.getElementById("projectInput").addEventListener("change",e=>{const file=e.target.files[0];if(file)loadProjectFile(file);e.target.value="";});
+        function requestNewPNG(){if(window.confirm(UNSAVED_MESSAGE))document.getElementById("newPngInput").click();}
+        function readPNG(file,onload){const reader=new FileReader();reader.onerror=()=>setStatus("Erreur de lecture du PNG.");reader.onload=()=>{const image=new Image();image.onload=()=>onload(image);image.onerror=()=>setStatus("PNG invalide.");image.src=reader.result;};reader.readAsDataURL(file);}
+        function loadPNGAsLayer(file){
+            readPNG(file,image=>{
+                if(image.naturalWidth>MAX_DIMENSION||image.naturalHeight>MAX_DIMENSION)return setStatus(`Image trop grande. Limite : ${MAX_DIMENSION} × ${MAX_DIMENSION}.`);
+                if(floatingSelection)cancelFloatingSelection();
+                if(document.getElementById("fitCanvasOnImport").checked)resizeCanvasOnly(image.naturalWidth,image.naturalHeight,false);
+                const base=file.name.replace(/\.png$/i,"")||"Image importée";const layer=new Layer(base);layers.push(layer);activeLayerIndex=layers.length-1;
+                layer.ctx.imageSmoothingEnabled=false;layer.ctx.drawImage(image,0,0);layer.offsetX=layer.offsetY=0;
+                IMAGE_W=Math.max(IMAGE_W,image.naturalWidth);IMAGE_H=Math.max(IMAGE_H,image.naturalHeight);
+                syncDimensionInputs();history.commit();updateLayerUI();render();setStatus(`PNG importé dans un nouveau calque : ${image.naturalWidth} × ${image.naturalHeight}.`);
+            });
+        }
+        function loadNewPNGProject(file){
+            readPNG(file,image=>{
+                if(image.naturalWidth>MAX_DIMENSION||image.naturalHeight>MAX_DIMENSION)return setStatus(`Image trop grande. Limite : ${MAX_DIMENSION} × ${MAX_DIMENSION}.`);
+                DOC_W=image.naturalWidth;DOC_H=image.naturalHeight;IMAGE_W=DOC_W;IMAGE_H=DOC_H;rebuildBuffers();clearSelectionStateForResize();floatingSelection=null;activeHandle=null;
+                const layer=new Layer(file.name.replace(/\.png$/i,"")||"Calque 1");layer.ctx.drawImage(image,0,0);layers=[layer];activeLayerIndex=0;
+                syncDimensionInputs();resizeDisplay();updateLayerUI();history.reset(false);projectDirty=true;setStatus(`Nouveau projet créé depuis ${file.name} (${DOC_W} × ${DOC_H}).`);
+            });
+        }
+        function exportPNG(){composeLayers();downloadDataURL(compCanvas.toDataURL("image/png"),`tileset_${DOC_W}x${DOC_H}.png`);setStatus(`PNG ${DOC_W} × ${DOC_H} exporté.`);}
+        function exportProject(){
+            const project={format:"tileset-editor-pro",version:3,width:DOC_W,height:DOC_H,imageWidth:IMAGE_W,imageHeight:IMAGE_H,activeLayerIndex,layers:layers.map(layer=>({name:layer.name,offsetX:layer.offsetX,offsetY:layer.offsetY,visible:layer.visible,opacity:layer.opacity,isBackground:layer.isBackground,locked:layer.locked,bgColor:layer.bgColor,image:layer.canvas.toDataURL("image/png")}))};
+            const url=URL.createObjectURL(new Blob([JSON.stringify(project,null,2)],{type:"application/json"}));downloadDataURL(url,`tileset_project_${DOC_W}x${DOC_H}.json`,true);projectDirty=false;setStatus("Projet complet exporté.");
+        }
+        async function loadProjectFile(file){
+            try{
+                const p=JSON.parse(await file.text());if(!p||p.format!=="tileset-editor-pro"||!Array.isArray(p.layers)||!p.layers.length)throw new Error("Format incompatible");
+                const width=validDimension(p.width||p.size||32),height=validDimension(p.height||p.size||32);DOC_W=width;DOC_H=height;IMAGE_W=validDimension(p.imageWidth||width);IMAGE_H=validDimension(p.imageHeight||height);rebuildBuffers();selectionMask=new Uint8Array(DOC_W*DOC_H);selectionMemory=null;selectionMemoryActive=false;
+                const restored=[];for(const d of p.layers){const layer=new Layer(String(d.name||"Calque"),{width:DOC_W,height:DOC_H,offsetX:Number(d.offsetX)||0,offsetY:Number(d.offsetY)||0,visible:d.visible!==false,opacity:clamp(Number(d.opacity??1),0,1),isBackground:Boolean(d.isBackground),locked:Boolean(d.locked),bgColor:d.bgColor||"#000000"});if(d.image){const image=await loadImageFromURL(d.image);layer.ctx.clearRect(0,0,DOC_W,DOC_H);layer.ctx.drawImage(image,0,0,DOC_W,DOC_H);}restored.push(layer);}
+                layers=restored;ensureBackgroundAtBottom();activeLayerIndex=clamp(Number(p.activeLayerIndex)||0,0,layers.length-1);floatingSelection=null;clearSelection(false);syncDimensionInputs();resizeDisplay();updateLayerUI();updateSelectionMemoryUI();history.reset(false);projectDirty=false;setStatus(`Projet chargé : ${DOC_W} × ${DOC_H}, ${layers.length} calque(s).`);
+            }catch(error){console.error(error);setStatus("Impossible de charger ce projet JSON.");}
+        }
+        function loadImageFromURL(url){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=url;});}
+        function downloadDataURL(url,filename,revoke=false){const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();if(revoke)setTimeout(()=>URL.revokeObjectURL(url),0);}
+
+        ["dragenter","dragover"].forEach(type=>workspace.addEventListener(type,e=>{e.preventDefault();workspace.classList.add("drop-active");}));
+        ["dragleave","drop"].forEach(type=>workspace.addEventListener(type,e=>{e.preventDefault();workspace.classList.remove("drop-active");}));
+        workspace.addEventListener("drop",e=>{const file=e.dataTransfer.files[0];if(!file)return;if(file.type==="image/png"||file.name.toLowerCase().endsWith(".png"))loadPNGAsLayer(file);else if(file.name.toLowerCase().endsWith(".json"))loadProjectFile(file);else setStatus("Déposez un PNG ou JSON compatible.");});
+
+        function toggleSidebar(side){
+            const left=side==="left",className=left?"left-collapsed":"right-collapsed";document.body.classList.toggle(className);
+            const collapsed=document.body.classList.contains(className),button=document.getElementById(left?"toggleLeft":"toggleRight");
+            button.textContent=left?(collapsed?"›":"‹"):(collapsed?"‹":"›");button.title=collapsed?"Déployer la barre latérale":"Rétracter la barre latérale";
+        }
+        document.getElementById("toggleLeft").onclick=()=>toggleSidebar("left");document.getElementById("toggleRight").onclick=()=>toggleSidebar("right");
+
+        const DEFAULT_SHORTCUTS={
+            undo:"Ctrl+Z",redo:"Ctrl+Y",copy:"Ctrl+C",cut:"Ctrl+X",paste:"Ctrl+V",selectAll:"Ctrl+A",invertSelection:"Ctrl+I",
+            toolPencil:"B",toolEraser:"E",toolFill:"G",toolMove:"M",toolRect:"R",toolLasso:"L",toolWand:"W",
+            validate:"Enter",cancel:"Escape",deleteSelection:"Delete"
+        };
+        const SHORTCUT_LABELS={undo:"Annuler",redo:"Rétablir",copy:"Copier",cut:"Couper",paste:"Coller",selectAll:"Tout sélectionner",invertSelection:"Inverser sélection",toolPencil:"Outil crayon",toolEraser:"Outil gomme",toolFill:"Outil remplir",toolMove:"Déplacer le calque",toolRect:"Sélection rectangle",toolLasso:"Sélection lasso",toolWand:"Baguette magique",validate:"Valider transformation",cancel:"Annuler / désélectionner",deleteSelection:"Effacer la sélection"};
+        let shortcuts=loadShortcutSettings(),shortcutDrafts={...shortcuts};
+        function loadShortcutSettings(){try{return{...DEFAULT_SHORTCUTS,...JSON.parse(localStorage.getItem("tilesetEditorShortcuts")||"{}")};}catch(_){return{...DEFAULT_SHORTCUTS};}}
+        function normalizeShortcutText(text){return String(text||"").trim().replace(/Cmd|Meta/gi,"Ctrl").replace(/Control/gi,"Ctrl").replace(/Del$/i,"Delete");}
+        function shortcutFromEvent(event){
+            const modifierKeys=["Control","Shift","Alt","Meta"];if(modifierKeys.includes(event.key))return null;
+            let key=event.key;if(key===" ")key="Space";if(key.length===1)key=key.toUpperCase();if(key==="Backspace")key="Backspace";
+            const parts=[];if(event.ctrlKey||event.metaKey)parts.push("Ctrl");if(event.altKey)parts.push("Alt");if(event.shiftKey)parts.push("Shift");parts.push(key);return parts.join("+");
+        }
+        function eventMatchesShortcut(event,shortcut){const current=shortcutFromEvent(event);return current&&normalizeShortcutText(current).toLowerCase()===normalizeShortcutText(shortcut).toLowerCase();}
+        function renderShortcutEditor(){
+            const list=document.getElementById("shortcutList");list.innerHTML="";
+            Object.keys(DEFAULT_SHORTCUTS).forEach(id=>{const row=document.createElement("label");row.className="shortcut-row";const name=document.createElement("span");name.textContent=SHORTCUT_LABELS[id];const input=document.createElement("input");input.type="text";input.readOnly=true;input.className="shortcut-input";input.value=shortcutDrafts[id]||"";input.dataset.action=id;input.addEventListener("keydown",event=>{event.preventDefault();event.stopPropagation();if(event.key==="Escape")return;const value=shortcutFromEvent(event);if(value){shortcutDrafts[id]=value;input.value=value;}});row.append(name,input);list.append(row);});
+        }
+        function openShortcutModal(){shortcutDrafts={...shortcuts};renderShortcutEditor();document.getElementById("shortcutModal").hidden=false;}
+        function closeShortcutModal(){document.getElementById("shortcutModal").hidden=true;}
+        function resetShortcutDrafts(){shortcutDrafts={...DEFAULT_SHORTCUTS};renderShortcutEditor();}
+        function saveShortcutSettings(){
+            const values=Object.values(shortcutDrafts).filter(Boolean).map(v=>normalizeShortcutText(v).toLowerCase());
+            if(new Set(values).size!==values.length)return alert("Deux actions utilisent le même raccourci. Modifiez l’un des doublons.");
+            shortcuts={...shortcutDrafts};try{localStorage.setItem("tilesetEditorShortcuts",JSON.stringify(shortcuts));}catch(_){}closeShortcutModal();updateShortcutTitles();setStatus("Raccourcis enregistrés localement.");
+        }
+        function updateShortcutTitles(){
+            const map={toolPencil:"btn-pencil",toolEraser:"btn-eraser",toolFill:"btn-fill",toolMove:"btn-move",toolRect:"btn-rect-select",toolLasso:"btn-lasso-select",toolWand:"btn-wand",undo:"btnUndo",redo:"btnRedo"};
+            for(const[action,id]of Object.entries(map)){const element=document.getElementById(id);if(element)element.title=shortcuts[action]||"";}
+        }
+        function runShortcut(action,event){
+            const actions={undo:executeUndo,redo:executeRedo,copy:copySelection,cut:cutSelection,paste:()=>pasteSelection(false),selectAll,invertSelection,toolPencil:()=>setTool("pencil"),toolEraser:()=>setTool("eraser"),toolFill:()=>setTool("fill"),toolMove:()=>setTool("move"),toolRect:()=>setTool("rect-select"),toolLasso:()=>setTool("lasso-select"),toolWand:()=>setTool("wand"),validate:()=>floatingSelection&&bakeFloatingSelection(),cancel:()=>floatingSelection?cancelFloatingSelection():clearSelection(),deleteSelection:()=>{if(hasSelection||floatingSelection)deleteSelectedPixels();}};
+            if(actions[action]){event.preventDefault();actions[action]();return true;}return false;
+        }
+        document.addEventListener("keydown",event=>{
+            if(!document.getElementById("shortcutModal").hidden){if(event.key==="Escape"){event.preventDefault();closeShortcutModal();}return;}
+            const tag=event.target.tagName,editing=["INPUT","TEXTAREA","SELECT"].includes(tag);if(editing)return;
+            for(const[action,shortcut]of Object.entries(shortcuts))if(eventMatchesShortcut(event,shortcut)){runShortcut(action,event);return;}
+            if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==="z"){event.preventDefault();executeRedo();}
+        });
+        window.addEventListener("beforeunload",event=>{if(!projectDirty)return;event.preventDefault();event.returnValue=UNSAVED_MESSAGE;return UNSAVED_MESSAGE;});
+
+        layers.push(new Layer("Calque 1"));activeLayerIndex=0;syncDimensionInputs();resizeDisplay();updateLayerUI();updateSelectionMemoryUI();updateShortcutTitles();history.reset(false);projectDirty=false;setTool("pencil");setStatus("Prêt. Sélections mémorisables, rotation précise et raccourcis personnalisables activés.");
+    </script>
+</body>
+</html>

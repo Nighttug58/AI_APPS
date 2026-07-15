@@ -1,0 +1,3094 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Sprite Pipeline Studio v4 Canvas Safe — Mask Remover + Extractor</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090c12;
+      --bg-2: #0d1119;
+      --panel: #111722;
+      --panel-2: #151d2a;
+      --panel-3: #0d131d;
+      --line: #263246;
+      --line-soft: #1c2636;
+      --text: #eef4ff;
+      --muted: #8e9bb0;
+      --muted-2: #66758c;
+      --accent: #5da8ff;
+      --accent-strong: #2f86ee;
+      --accent-soft: rgba(93, 168, 255, .14);
+      --green: #39d98a;
+      --yellow: #f3c969;
+      --red: #ff6b78;
+      --purple: #a78bfa;
+      --shadow: 0 18px 55px rgba(0, 0, 0, .42);
+      --radius: 12px;
+      --topbar-h: 52px;
+      --status-h: 34px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      width: 100%;
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: var(--topbar-h) minmax(0, 1fr) var(--status-h);
+      background:
+        radial-gradient(circle at 20% -10%, rgba(47, 134, 238, .12), transparent 28%),
+        radial-gradient(circle at 85% 0%, rgba(167, 139, 250, .08), transparent 24%),
+        var(--bg);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(13, 17, 25, .94);
+      backdrop-filter: blur(14px);
+      min-width: 0;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 210px;
+      user-select: none;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #3b5c83;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #16263a, #0f1724);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .025);
+      color: var(--accent);
+      font-weight: 900;
+      letter-spacing: -.08em;
+    }
+
+    .brand-copy { min-width: 0; }
+    .brand-title { font-size: 13px; font-weight: 850; letter-spacing: .015em; white-space: nowrap; }
+    .brand-subtitle { margin-top: 2px; font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+    .workflow-tabs {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .workflow-tab {
+      min-width: 190px;
+      height: 34px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .16s ease;
+    }
+
+    .workflow-tab:hover:not(:disabled) { color: var(--text); background: #151d29; }
+    .workflow-tab.active {
+      color: #fff;
+      border-color: #315c8d;
+      background: linear-gradient(180deg, #1b3554, #17283d);
+      box-shadow: 0 6px 22px rgba(25, 86, 151, .18);
+    }
+    .workflow-tab:disabled { opacity: .36; cursor: not-allowed; }
+
+    .step-index {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,.075);
+      color: currentColor;
+      font-size: 11px;
+    }
+
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+
+    .mobile-panel-btn { display: none; }
+
+    .page-area { min-height: 0; position: relative; }
+    .page { width: 100%; height: 100%; display: none; }
+    .page.active { display: block; }
+
+    .workspace-grid {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .main-workspace {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-2);
+    }
+
+    .workspace-toolbar {
+      height: 38px;
+      min-height: 38px;
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #0f151f;
+    }
+
+    .toolbar-group { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .toolbar-label { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+    .inspector {
+      position: relative;
+      z-index: 20;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      border-left: 1px solid var(--line-soft);
+      background: #0e141e;
+      box-shadow: -10px 0 24px rgba(0,0,0,.16);
+      scrollbar-color: #34435a transparent;
+      isolation: isolate;
+    }
+
+    .inspector-head {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      padding: 13px 14px 11px;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(14, 20, 30, .96);
+      backdrop-filter: blur(12px);
+    }
+
+    .inspector-title { margin: 0; font-size: 13px; font-weight: 850; }
+    .inspector-subtitle { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+
+    .card {
+      margin: 10px;
+      padding: 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #141c28, #111823);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+    }
+
+    .card.accent-card { border-color: #2a507b; background: linear-gradient(180deg, #14243a, #111c2c); }
+    .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .card h3 { margin: 0; font-size: 12px; font-weight: 850; }
+    .card-note { margin: -3px 0 10px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+
+    .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .row:first-child { margin-top: 0; }
+    .grow { flex: 1; min-width: 0; }
+    .field-group { flex: 1; min-width: 0; }
+    .field-group > label,
+    .field-label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .inline-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .inline-fields.three { grid-template-columns: 1fr 1fr 1fr; }
+
+    input[type="number"], input[type="text"], select {
+      width: 100%;
+      height: 34px;
+      padding: 0 9px;
+      border: 1px solid #2e3a4e;
+      border-radius: 8px;
+      outline: none;
+      background: #0a0f17;
+      color: var(--text);
+      font-size: 12px;
+      transition: .14s ease;
+    }
+
+    input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(93, 168, 255, .10); }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 38px;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .value-pill {
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #32445e;
+      border-radius: 7px;
+      background: #0c131e;
+      color: var(--yellow);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn, .file-btn, .tool-btn {
+      min-height: 34px;
+      padding: 0 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid #304057;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #202b3b, #192333);
+      color: #edf4ff;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      transition: transform .12s ease, filter .12s ease, border-color .12s ease;
+    }
+
+    .btn:hover:not(:disabled), .file-btn:hover, .tool-btn:hover:not(:disabled) { filter: brightness(1.12); border-color: #45617f; }
+    .btn:active:not(:disabled), .file-btn:active, .tool-btn:active:not(:disabled) { transform: translateY(1px); }
+    .btn:disabled, .tool-btn:disabled { opacity: .38; cursor: not-allowed; filter: grayscale(.5); }
+    .btn.primary { border-color: #3576bc; background: linear-gradient(180deg, #3a91f1, #2572ca); color: #fff; }
+    .btn.success { border-color: #27875a; background: linear-gradient(180deg, #38b978, #248759); color: #fff; }
+    .btn.danger { border-color: #a9404c; background: linear-gradient(180deg, #d95866, #a83e49); color: #fff; }
+    .btn.warning { border-color: #8a6a27; background: linear-gradient(180deg, #8b6c2d, #624c20); color: #fff; }
+    .btn.ghost { background: transparent; }
+    .btn.full { width: 100%; }
+    .btn.large { min-height: 42px; font-size: 12px; }
+
+    .segmented {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid #26344a;
+      border-radius: 9px;
+      background: #0a1018;
+    }
+
+    .segmented button,
+    .segmented label {
+      min-height: 30px;
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .segmented button.active,
+    .segmented label:has(input:checked) {
+      background: #1b314c;
+      color: #fff;
+      box-shadow: inset 0 0 0 1px #325d8c;
+    }
+    .segmented input { display: none; }
+
+    .viewport {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+      contain: layout paint;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(73, 108, 153, .08), transparent 38%),
+        #090d14;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .viewport::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .canvas-stage {
+      position: absolute;
+      left: 0;
+      top: 0;
+      max-width: none;
+      max-height: none;
+      transform-origin: 0 0;
+      will-change: transform;
+      box-shadow: var(--shadow);
+      z-index: 1;
+    }
+
+    .checker {
+      background-color: #141a24;
+      background-image:
+        linear-gradient(45deg, #1c2431 25%, transparent 25%),
+        linear-gradient(-45deg, #1c2431 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1c2431 75%),
+        linear-gradient(-45deg, transparent 75%, #1c2431 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+
+    canvas { display: block; image-rendering: pixelated; }
+    .overlay-canvas { position: absolute; left: 0; top: 0; pointer-events: none; background: transparent; }
+
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .empty-box {
+      width: min(420px, calc(100% - 36px));
+      padding: 26px;
+      border: 1px dashed #334157;
+      border-radius: 18px;
+      background: rgba(14, 20, 30, .75);
+      text-align: center;
+      box-shadow: 0 24px 70px rgba(0,0,0,.25);
+    }
+
+    .empty-icon { margin-bottom: 10px; color: var(--accent); font-size: 28px; font-weight: 900; }
+    .empty-title { font-size: 14px; font-weight: 850; }
+    .empty-text { margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+
+    .floating-info {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      display: flex;
+      gap: 7px;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .badge {
+      padding: 6px 9px;
+      border: 1px solid #2e3b50;
+      border-radius: 8px;
+      background: rgba(8, 12, 18, .82);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+      backdrop-filter: blur(8px);
+    }
+    .badge.highlight { color: var(--yellow); }
+
+    .help-line { margin-top: 8px; color: var(--muted-2); font-size: 9px; line-height: 1.5; }
+    .divider { height: 1px; margin: 10px 0; background: var(--line-soft); }
+    .status-inline { margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .status-inline.ok { color: #7fe4b1; }
+    .status-inline.warn { color: var(--yellow); }
+
+    .switch-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .switch-line label { color: var(--muted); font-size: 10px; }
+
+    .extractor-shell {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .extractor-shell > .inspector {
+      width: 360px;
+      min-width: 360px;
+      max-width: 360px;
+      position: relative;
+      z-index: 18;
+      overflow: auto;
+    }
+
+    .extractor-main {
+      position: relative;
+      z-index: 0;
+      min-width: 0;
+      min-height: 0;
+      max-width: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: 38px minmax(0, 1fr) 154px;
+      background: var(--bg-2);
+      contain: layout paint;
+    }
+
+    .subtabs {
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #0f151f;
+    }
+
+    .subtabs-left { display: flex; gap: 6px; }
+    .subtab {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .subtab.active { border-color: #345d8b; background: #182d45; color: #fff; }
+    .subtab:disabled { opacity: .35; cursor: not-allowed; }
+
+    .extractor-view {
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      display: none;
+      overflow: hidden;
+      clip-path: inset(0);
+      contain: strict;
+      isolation: isolate;
+      z-index: 0;
+    }
+    .extractor-view.active { display: block; }
+    .extractor-view > .viewport {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      clip-path: inset(0);
+      contain: strict;
+    }
+    #extractorEditorViewport {
+      --editor-safe-inset: 20px;
+      box-shadow: inset 0 0 0 1px rgba(93,168,255,.08);
+    }
+    #extractorEditorViewport::after {
+      content: '';
+      position: absolute;
+      inset: var(--editor-safe-inset);
+      z-index: 3;
+      pointer-events: none;
+      border: 1px dashed rgba(93,168,255,.14);
+      border-radius: 8px;
+    }
+    #extractorEditorStage {
+      z-index: 1;
+      max-width: none;
+      max-height: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,.34);
+    }
+
+    .sprite-strip {
+      min-height: 154px;
+      max-height: 154px;
+      height: 154px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid var(--line-soft);
+      background: #0c121b;
+      position: relative;
+      z-index: 8;
+    }
+
+    .sprite-strip-head {
+      flex: 0 0 35px;
+      height: 35px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 750;
+    }
+
+    .sprite-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: none;
+      scrollbar-gutter: stable both-edges;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 8px;
+      padding: 9px;
+      scrollbar-color: #33435a #0c121b;
+      scrollbar-width: thin;
+    }
+
+    .sprite-list::-webkit-scrollbar { height: 12px; }
+    .sprite-list::-webkit-scrollbar-track { background: #0c121b; }
+    .sprite-list::-webkit-scrollbar-thumb { background: #33435a; border-radius: 999px; border: 2px solid #0c121b; }
+    .sprite-list::-webkit-scrollbar-thumb:hover { background: #445977; }
+
+    .sprite-item {
+      position: relative;
+      flex: 0 0 132px;
+      height: 124px;
+      padding: 7px;
+      border: 1px solid #26344a;
+      border-radius: 10px;
+      background: #121a26;
+      cursor: pointer;
+      text-align: left;
+      transition: .14s ease;
+    }
+    .sprite-item:hover { border-color: #3a516f; background: #172231; }
+    .sprite-item.active { border-color: var(--accent); background: #17283d; box-shadow: 0 0 0 2px rgba(93,168,255,.11); }
+
+    .sprite-thumb {
+      height: 72px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid #222e40;
+      border-radius: 7px;
+      background-color: #101620;
+      background-image:
+        linear-gradient(45deg, #192230 25%, transparent 25%),
+        linear-gradient(-45deg, #192230 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #192230 75%),
+        linear-gradient(-45deg, transparent 75%, #192230 75%);
+      background-size: 12px 12px;
+      background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+    }
+    .sprite-thumb img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+    .sprite-name { margin-top: 6px; overflow: hidden; color: #e6efff; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    .sprite-meta { margin-top: 2px; color: var(--muted); font-size: 9px; }
+
+    .sprite-delete-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(255, 107, 120, .55);
+      border-radius: 7px;
+      background: rgba(35, 10, 15, .9);
+      color: #ff9aa4;
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 3;
+    }
+    .sprite-delete-btn:hover { background: #7d2630; color: #fff; }
+
+    .editor-info-banner {
+      padding: 8px 10px;
+      border: 1px solid #2b4d72;
+      border-radius: 8px;
+      background: #10223a;
+      color: #a9cff8;
+      font-size: 9px;
+      line-height: 1.45;
+    }
+
+    .anchor-key {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+    .anchor-dot { width: 9px; height: 9px; border: 2px solid var(--red); border-radius: 50%; }
+
+    .statusbar {
+      min-width: 0;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid var(--line-soft);
+      background: #0b1018;
+      color: var(--muted);
+      font-size: 10px;
+      z-index: 20;
+    }
+    .status-phase { color: var(--accent); font-weight: 850; white-space: nowrap; }
+    .status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+    .json-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(3, 7, 13, .78);
+      backdrop-filter: blur(8px);
+    }
+    .json-modal.open { display: flex; }
+    .json-modal-dialog {
+      width: min(760px, 96vw);
+      max-height: min(78dvh, 760px);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      border: 1px solid #30425d;
+      border-radius: 14px;
+      background: #0d141f;
+      box-shadow: 0 28px 90px rgba(0,0,0,.62);
+    }
+    .json-modal-head, .json-modal-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #111a27;
+    }
+    .json-modal-actions { border-top: 1px solid var(--line-soft); border-bottom: 0; justify-content: flex-end; }
+    .json-modal-title { font-size: 12px; font-weight: 850; }
+    .json-preview {
+      margin: 0;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+      color: #dce9ff;
+      background: #080d14;
+      font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre;
+      tab-size: 2;
+      scrollbar-color: #3a4c68 #080d14;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 980px) {
+      :root { --topbar-h: 92px; }
+      .topbar { flex-wrap: wrap; align-content: center; gap: 8px 12px; padding: 8px 10px; }
+      .brand { min-width: 170px; }
+      .workflow-tabs { order: 3; width: 100%; }
+      .workflow-tab { min-width: 0; flex: 1; height: 36px; }
+      .top-actions { margin-left: auto; }
+      .workspace-grid, .extractor-shell { grid-template-columns: minmax(0, 1fr) 320px; }
+      .extractor-shell > .inspector { width: 320px; min-width: 320px; max-width: 320px; }
+    }
+
+    @media (max-width: 760px) {
+      :root { --topbar-h: 106px; --status-h: 32px; }
+      html, body { overflow: hidden; }
+      .app { height: 100dvh; min-height: 100dvh; grid-template-rows: var(--topbar-h) minmax(0, 1fr) var(--status-h); }
+      .page-area { min-height: 0; }
+      .brand-subtitle { display: none; }
+      .brand { min-width: 145px; }
+      .brand-title { font-size: 11px; }
+      .top-actions { width: 100%; justify-content: flex-end; }
+      .mobile-panel-btn { display: inline-flex; }
+      .workspace-grid, .extractor-shell {
+        position: relative;
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr);
+        overflow: hidden;
+      }
+      .main-workspace, .extractor-main { min-height: 0; }
+      .extractor-main { grid-template-rows: 42px minmax(0, 1fr) 126px; }
+      .extractor-shell > .inspector { width: auto; min-width: 0; max-width: none; }
+      .sprite-strip { min-height: 126px; max-height: 126px; height: 126px; }
+      .workspace-toolbar, .subtabs {
+        height: auto;
+        min-height: 42px;
+        padding: 6px 8px;
+        justify-content: flex-start;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+      }
+      .workspace-toolbar::-webkit-scrollbar, .subtabs::-webkit-scrollbar, .sprite-list::-webkit-scrollbar { display: none; }
+      .toolbar-group, .subtabs-left { flex: 0 0 auto; }
+      .toolbar-group:last-child { min-width: max-content; }
+      .btn, .file-btn, .tool-btn, .workflow-tab, .subtab, input, select { min-height: 38px; }
+      .segmented { min-height: 38px; }
+      .segmented > button, .segmented > label { min-height: 34px; }
+      .inline-fields, .inline-fields.three { grid-template-columns: 1fr 1fr; }
+      .row { flex-wrap: wrap; }
+      .row > .grow, .row > .field-group { min-width: 0; }
+      .field-group { min-width: 0; }
+      .inspector {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 72dvh;
+        z-index: 35;
+        border-left: 0;
+        border-top: 1px solid var(--line-soft);
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        box-shadow: 0 -14px 38px rgba(0,0,0,.38);
+        transform: translateY(calc(100% - 52px));
+        transition: transform .22s ease;
+        will-change: transform;
+      }
+      body.mobile-inspector-open .inspector { transform: translateY(0); }
+      .inspector-head { cursor: pointer; padding-right: 44px; }
+      .inspector-head::after {
+        content: '⌃';
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1;
+      }
+      body:not(.mobile-inspector-open) .inspector-head::after { content: '⌄'; }
+      .card { margin: 8px; padding: 10px; }
+      .card-note, .help-line, .status-inline { font-size: 10px; }
+      .viewport { padding-bottom: 0; }
+      #extractorEditorViewport { --editor-safe-inset: 12px; }
+      .inspector { background: #0e141e; }
+      .floating-info { left: 8px; right: 8px; bottom: 8px; }
+      #extractorEditorView .floating-info .badge:nth-child(1),
+      #extractorEditorView .floating-info .badge:nth-child(2) { display: none; }
+      .sprite-strip { position: relative; z-index: 5; }
+      .sprite-strip-head { flex-basis: 30px; height: 30px; padding: 0 10px; }
+      .sprite-list { gap: 6px; padding: 7px; }
+      .sprite-item { flex: 0 0 112px; height: 106px; padding: 6px; }
+      .sprite-thumb { height: 58px; }
+      .sprite-name { font-size: 9px; }
+      .sprite-meta { font-size: 8px; }
+      .statusbar { padding-inline: 10px; }
+    }
+
+    @media (max-width: 520px) {
+      :root { --topbar-h: 118px; }
+      .topbar { gap: 8px; padding: 8px; }
+      .workflow-tabs { gap: 6px; }
+      .workflow-tab { font-size: 10px; padding: 0 8px; }
+      .top-actions { gap: 6px; }
+      .btn, .file-btn, .tool-btn { padding-inline: 10px; font-size: 11px; }
+      .toolbar-label { font-size: 10px; }
+      .inline-fields, .inline-fields.three { grid-template-columns: 1fr; }
+      .extractor-main { grid-template-rows: 42px minmax(0, 1fr) 116px; }
+      .sprite-strip { min-height: 116px; max-height: 116px; height: 116px; }
+      .sprite-item { flex-basis: 98px; height: 98px; }
+      .sprite-thumb { height: 52px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">SP</div>
+        <div class="brand-copy">
+          <div class="brand-title">Sprite Pipeline Studio</div>
+          <div class="brand-subtitle">Nettoyage, extraction, édition et export</div>
+        </div>
+      </div>
+
+      <nav class="workflow-tabs" aria-label="Étapes du pipeline">
+        <button class="workflow-tab active" id="workflowMaskBtn" type="button">
+          <span class="step-index">1</span> Mask Remover
+        </button>
+        <button class="workflow-tab" id="workflowExtractorBtn" type="button" disabled>
+          <span class="step-index">2</span> Sprite Extractor
+        </button>
+      </nav>
+
+      <div class="top-actions">
+        <label class="file-btn">
+          Ouvrir une image
+          <input id="sharedImageLoader" type="file" accept="image/*" hidden />
+        </label>
+        <button class="btn mobile-panel-btn" id="mobilePanelToggleBtn" type="button">Panneau</button>
+        <button class="btn" id="btnFullscreen" type="button">Plein écran</button>
+      </div>
+    </header>
+
+    <main class="page-area">
+      <section class="page active" id="maskPage">
+        <div class="workspace-grid">
+          <div class="main-workspace">
+            <div class="workspace-toolbar">
+              <div class="toolbar-group">
+                <div class="segmented" aria-label="Mode d'interaction">
+                  <button id="maskActionModeBtn" class="active" type="button">Action</button>
+                  <button id="maskNavModeBtn" type="button">Navigation</button>
+                </div>
+                <button class="tool-btn" id="maskFitBtn" type="button">Ajuster</button>
+                <button class="tool-btn" id="maskZoomOutBtn" type="button">−</button>
+                <button class="tool-btn" id="maskZoomInBtn" type="button">+</button>
+              </div>
+              <div class="toolbar-group">
+                <span class="toolbar-label" id="maskImageInfo">Aucune image</span>
+              </div>
+            </div>
+
+            <div class="viewport" id="maskViewport">
+              <div class="canvas-stage checker" id="maskCanvasStage">
+                <canvas id="maskCanvas"></canvas>
+              </div>
+              <div class="empty-state" id="maskEmptyState">
+                <div class="empty-box">
+                  <div class="empty-icon">◇</div>
+                  <div class="empty-title">Commence par charger une image</div>
+                  <div class="empty-text">Supprime le fond, affine la sélection, puis envoie directement le résultat vers le Sprite Extractor.</div>
+                </div>
+              </div>
+              <div class="floating-info">
+                <span class="badge" id="maskModeBadge">Mode Action</span>
+                <span class="badge" id="maskZoomBadge">100%</span>
+              </div>
+            </div>
+          </div>
+
+          <aside class="inspector">
+            <div class="inspector-head">
+              <h2 class="inspector-title">Mask Remover</h2>
+              <div class="inspector-subtitle">Sélectionne une zone, applique directement Effacer, Noir pur ou N&B, puis poursuis sans fichier intermédiaire.</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title-row"><h3>Image et dimensions</h3></div>
+              <div class="inline-fields">
+                <div class="field-group">
+                  <label for="maskWidthInput">Largeur</label>
+                  <input id="maskWidthInput" type="number" min="1" max="8192" value="320" />
+                </div>
+                <div class="field-group">
+                  <label for="maskHeightInput">Hauteur</label>
+                  <input id="maskHeightInput" type="number" min="1" max="8192" value="240" />
+                </div>
+              </div>
+              <div class="row switch-line">
+                <label><input id="maskKeepRatio" type="checkbox" checked /> Conserver les proportions</label>
+                <button class="btn ghost" id="maskResetOriginalBtn" type="button">Restaurer</button>
+              </div>
+              <div class="row">
+                <button class="btn" id="maskUndoBtn" type="button" disabled>Annuler</button>
+                <button class="btn" id="maskRedoBtn" type="button" disabled>Refaire</button>
+              </div>
+            </div>
+
+            <div class="card accent-card">
+              <div class="card-title-row"><h3>Zone initiale et actions</h3></div>
+              <div class="card-note">Clique une couleur pour créer la sélection. Les actions Effacer, Noir pur et N&amp;B s’appliquent directement à cette zone.</div>
+              <div class="range-row">
+                <span>Tolérance</span>
+                <input id="maskZoneTolerance" type="range" min="0" max="180" value="30" />
+                <span class="value-pill" id="maskZoneToleranceValue">30</span>
+              </div>
+              <div class="row">
+                <div class="field-group">
+                  <label for="maskMorphInput">Rayon de morphologie</label>
+                  <input id="maskMorphInput" type="number" min="1" max="64" value="1" />
+                </div>
+                <button class="btn grow" id="maskGrowBtn" type="button">Gonfler</button>
+                <button class="btn grow" id="maskShrinkBtn" type="button">Dégonfler</button>
+              </div>
+              <div class="row">
+                <button class="btn danger grow" id="maskDeleteBtn" type="button">Effacer</button>
+                <button class="btn grow" id="maskBlackBtn" type="button">Noir pur</button>
+                <button class="btn grow" id="maskGrayBtn" type="button">N&amp;B</button>
+              </div>
+              <div class="row">
+                <button class="btn full" id="maskAutoBackgroundBtn" type="button">Auto : supprimer le fond depuis le coin</button>
+              </div>
+              <div class="row">
+                <button class="btn full ghost" id="maskClearSelectionBtn" type="button">Annuler la sélection</button>
+              </div>
+            </div>
+
+            <div class="card accent-card">
+              <div class="card-title-row"><h3>Continuer le pipeline</h3></div>
+              <button class="btn primary large full" id="maskSendToExtractorBtn" type="button" disabled>Envoyer vers Sprite Extractor</button>
+              <div class="row">
+                <button class="btn success full" id="maskExportPngBtn" type="button" disabled>Exporter le PNG nettoyé</button>
+              </div>
+              <div class="help-line">Le transfert copie exactement le canvas nettoyé, avec sa transparence, puis lance automatiquement la détection des sprites.</div>
+            </div>
+
+          </aside>
+        </div>
+      </section>
+
+      <section class="page" id="extractorPage">
+        <div class="extractor-shell">
+          <div class="extractor-main">
+            <div class="subtabs">
+              <div class="subtabs-left">
+                <button class="subtab active" id="extractorOverviewTab" type="button">Vue globale</button>
+                <button class="subtab" id="extractorEditorTab" type="button" disabled>Éditeur du sprite</button>
+              </div>
+              <div class="toolbar-group">
+                <button class="tool-btn" id="extractorFitBtn" type="button">Ajuster</button>
+                <button class="tool-btn" id="extractorZoomOutBtn" type="button">−</button>
+                <button class="tool-btn" id="extractorZoomInBtn" type="button">+</button>
+              </div>
+            </div>
+
+            <div class="extractor-view active" id="extractorOverviewView">
+              <div class="viewport" id="extractorOverviewViewport">
+                <div class="canvas-stage checker" id="extractorOverviewStage">
+                  <canvas id="extractorSourceCanvas"></canvas>
+                  <canvas class="overlay-canvas" id="extractorOverlayCanvas"></canvas>
+                </div>
+                <div class="empty-state" id="extractorEmptyState">
+                  <div class="empty-box">
+                    <div class="empty-icon">▦</div>
+                    <div class="empty-title">Aucune image dans l’extracteur</div>
+                    <div class="empty-text">Termine le nettoyage dans le Mask Remover puis utilise « Envoyer vers Sprite Extractor ».</div>
+                  </div>
+                </div>
+                <div class="floating-info">
+                  <span class="badge" id="extractorZoomBadge">100%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="extractor-view" id="extractorEditorView">
+              <div class="viewport" id="extractorEditorViewport">
+                <div class="canvas-stage checker" id="extractorEditorStage">
+                  <canvas id="extractorEditorCanvas"></canvas>
+                </div>
+                <div class="floating-info">
+                  <span class="badge">Molette : zoom</span>
+                  <span class="badge">Milieu / clic droit : déplacer sans perdre le canvas</span>
+                  <span class="badge" id="extractorEditorZoomBadge">100%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sprite-strip">
+              <div class="sprite-strip-head">
+                <span>Sprites détectés : <strong id="extractorSpriteCount">0</strong></span>
+                <span id="extractorSelectionLabel">Aucune sélection</span>
+              </div>
+              <div class="sprite-list" id="extractorSpriteList"></div>
+            </div>
+          </div>
+
+          <aside class="inspector">
+            <div class="inspector-head">
+              <h2 class="inspector-title">Sprite Extractor</h2>
+              <div class="inspector-subtitle">Détecte, redimensionne chaque sprite indépendamment, place son anchor et exporte une planche homogène.</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title-row"><h3>Source et détection</h3></div>
+              <div class="row">
+                <button class="btn full" id="extractorRefreshFromMaskBtn" type="button">Actualiser depuis Mask Remover</button>
+              </div>
+              <div class="inline-fields three">
+                <div class="field-group">
+                  <label for="extractorAlphaThreshold">Alpha</label>
+                  <input id="extractorAlphaThreshold" type="number" min="0" max="255" value="1" />
+                </div>
+                <div class="field-group">
+                  <label for="extractorMinPixels">Min pixels</label>
+                  <input id="extractorMinPixels" type="number" min="1" value="4" />
+                </div>
+                <div class="field-group">
+                  <label for="extractorMinSize">Min W/H</label>
+                  <input id="extractorMinSize" type="number" min="1" value="5" />
+                </div>
+              </div>
+              <div class="row">
+                <button class="btn primary full" id="extractorAnalyzeBtn" type="button" disabled>Lancer la détection</button>
+              </div>
+            </div>
+
+            <div class="card accent-card">
+              <div class="card-title-row"><h3>Canvas de cellule global</h3></div>
+              <div class="editor-info-banner">Cette taille est obligatoirement commune à tous les sprites. Il n’y a plus de case « appliquer à tous ».</div>
+              <div class="inline-fields" style="margin-top:9px;">
+                <div class="field-group">
+                  <label for="extractorCellWidth">Largeur cellule</label>
+                  <input id="extractorCellWidth" type="number" min="1" value="32" />
+                </div>
+                <div class="field-group">
+                  <label for="extractorCellHeight">Hauteur cellule</label>
+                  <input id="extractorCellHeight" type="number" min="1" value="32" />
+                </div>
+              </div>
+              <div class="row">
+                <button class="btn full" id="extractorAutoCellBtn" type="button">Cellule auto + centrer tous</button>
+              </div>
+            </div>
+
+            <div class="card" id="extractorSpriteEditorCard">
+              <div class="card-title-row">
+                <h3>Sprite sélectionné</h3>
+                <span class="anchor-key"><span class="anchor-dot"></span> Anchor</span>
+              </div>
+
+              <div class="field-group">
+                <label for="extractorSpriteId">ID</label>
+                <input id="extractorSpriteId" type="text" value="" disabled />
+              </div>
+
+              <div class="segmented" style="margin-top:9px;">
+                <label><input type="radio" name="extractorTool" value="sprite" checked /> Déplacer sprite</label>
+                <label><input type="radio" name="extractorTool" value="anchor" /> Déplacer anchor</label>
+                <label><input type="radio" name="extractorTool" value="erase" /> Gomme</label>
+                <label><input type="radio" name="extractorTool" value="bwbrush" /> Pinceau N&amp;B</label>
+              </div>
+
+              <div class="divider"></div>
+              <div class="card-note">La taille visuelle ci-dessous est propre à ce sprite et indépendante de la cellule transparente globale.</div>
+              <div class="inline-fields">
+                <div class="field-group">
+                  <label for="extractorSpriteWidth">Largeur sprite</label>
+                  <input id="extractorSpriteWidth" type="number" min="1" value="1" disabled />
+                </div>
+                <div class="field-group">
+                  <label for="extractorSpriteHeight">Hauteur sprite</label>
+                  <input id="extractorSpriteHeight" type="number" min="1" value="1" disabled />
+                </div>
+              </div>
+
+              <div class="inline-fields" style="margin-top:8px;">
+                <div class="field-group">
+                  <label for="extractorOffsetX">Offset X</label>
+                  <input id="extractorOffsetX" type="number" value="0" disabled />
+                </div>
+                <div class="field-group">
+                  <label for="extractorOffsetY">Offset Y</label>
+                  <input id="extractorOffsetY" type="number" value="0" disabled />
+                </div>
+              </div>
+
+              <div class="inline-fields" style="margin-top:8px;">
+                <div class="field-group">
+                  <label for="extractorAnchorX">Anchor X</label>
+                  <input id="extractorAnchorX" type="number" value="0" disabled />
+                </div>
+                <div class="field-group">
+                  <label for="extractorAnchorY">Anchor Y</label>
+                  <input id="extractorAnchorY" type="number" value="0" disabled />
+                </div>
+              </div>
+
+              <div class="row">
+                <button class="btn primary full" id="extractorCenterBtn" type="button" disabled>Centrer sprite + anchor / aligner bas</button>
+              </div>
+              <div class="row">
+                <button class="btn grow" id="extractorResetSpriteSizeBtn" type="button" disabled>Taille native</button>
+                <button class="btn danger grow" id="extractorDeleteSpriteBtn" type="button" disabled>Supprimer ce sprite</button>
+              </div>
+
+              <div class="row" id="extractorEraserRow">
+                <div class="field-group">
+                  <label for="extractorBrushSize">Taille pinceau</label>
+                  <input id="extractorBrushSize" type="number" min="1" max="128" value="4" />
+                </div>
+                <button class="btn warning grow" id="extractorUndoEraseBtn" type="button" disabled>Annuler pinceau</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title-row"><h3>Nettoyage de la liste</h3></div>
+              <div class="inline-fields">
+                <div class="field-group">
+                  <label for="extractorCleanWidth">Min largeur</label>
+                  <input id="extractorCleanWidth" type="number" min="1" value="5" />
+                </div>
+                <div class="field-group">
+                  <label for="extractorCleanHeight">Min hauteur</label>
+                  <input id="extractorCleanHeight" type="number" min="1" value="5" />
+                </div>
+              </div>
+              <div class="row">
+                <button class="btn danger full" id="extractorCleanBtn" type="button" disabled>Nettoyer et réindexer</button>
+              </div>
+            </div>
+
+            <div class="card accent-card">
+              <div class="card-title-row"><h3>Export final</h3></div>
+              <div class="field-group">
+                <label for="extractorSheetName">Nom de la planche</label>
+                <input id="extractorSheetName" type="text" value="spritesheet_01" />
+              </div>
+              <div class="inline-fields" style="margin-top:8px;">
+                <div class="field-group">
+                  <label for="extractorManifestId">ID JSON</label>
+                  <input id="extractorManifestId" type="text" value="props_manifest" />
+                </div>
+                <div class="field-group">
+                  <label for="extractorColumns">Colonnes</label>
+                  <input id="extractorColumns" type="number" min="1" max="64" value="4" />
+                </div>
+              </div>
+              <div class="row" style="margin-top:10px;">
+                <button class="btn grow" id="extractorPreviewJsonBtn" type="button" disabled>Preview JSON</button>
+                <button class="btn grow" id="extractorExportJsonBtn" type="button" disabled>JSON seul</button>
+              </div>
+              <button class="btn success large full" id="extractorExportBtn" type="button" disabled>Exporter PNG + JSON</button>
+              <div class="status-inline" id="extractorExportStatus">Aucun sprite prêt à exporter.</div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <div class="json-modal" id="jsonPreviewModal" role="dialog" aria-modal="true" aria-labelledby="jsonPreviewTitle">
+      <div class="json-modal-dialog">
+        <div class="json-modal-head">
+          <span class="json-modal-title" id="jsonPreviewTitle">Preview du manifeste JSON</span>
+          <button class="btn ghost" id="jsonPreviewCloseBtn" type="button">Fermer</button>
+        </div>
+        <pre class="json-preview" id="jsonPreviewContent"></pre>
+        <div class="json-modal-actions">
+          <button class="btn" id="jsonPreviewCopyBtn" type="button">Copier le JSON</button>
+          <button class="btn success" id="jsonPreviewDownloadBtn" type="button">Télécharger JSON</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="statusbar">
+      <span class="status-phase" id="globalStatusPhase">Mask Remover</span>
+      <span class="status-text" id="globalStatusText">Charge une image pour commencer.</span>
+    </footer>
+  </div>
+
+  <script>
+    'use strict';
+
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+    const $ = (id) => document.getElementById(id);
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const intValue = (element, fallback = 0) => {
+      const value = Number.parseInt(element.value, 10);
+      return Number.isFinite(value) ? value : fallback;
+    };
+    const round = (value) => Math.round(Number(value) || 0);
+
+    function setGlobalStatus(phase, message) {
+      $('globalStatusPhase').textContent = phase;
+      $('globalStatusText').textContent = message;
+    }
+
+    function canvasToBlob(canvas) {
+      return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    }
+
+    function downloadBlob(blob, filename) {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    function setInputsDisabled(elements, disabled) {
+      elements.forEach((element) => { element.disabled = disabled; });
+    }
+
+    // ---------------------------------------------------------------------
+    // Workflow navigation
+    // ---------------------------------------------------------------------
+    let currentWorkflow = 'mask';
+
+    function setWorkflow(name) {
+      if (name === 'extractor' && $('workflowExtractorBtn').disabled) return;
+      currentWorkflow = name;
+      const maskActive = name === 'mask';
+      $('maskPage').classList.toggle('active', maskActive);
+      $('extractorPage').classList.toggle('active', !maskActive);
+      $('workflowMaskBtn').classList.toggle('active', maskActive);
+      $('workflowExtractorBtn').classList.toggle('active', !maskActive);
+      setGlobalStatus(maskActive ? 'Mask Remover' : 'Sprite Extractor', maskActive
+        ? (maskState.loadedImage ? 'Nettoie l’image puis envoie-la vers l’extracteur.' : 'Charge une image pour commencer.')
+        : (extractorState.sourceReady ? 'Ajuste les sprites puis exporte la planche.' : 'En attente d’une image nettoyée.'));
+      if (window.matchMedia('(max-width: 760px)').matches) document.body.classList.remove('mobile-inspector-open');
+      updateMobilePanelToggle?.();
+      requestAnimationFrame(() => {
+        if (maskActive && maskState.loadedImage) fitMaskToViewport();
+        if (!maskActive && extractorState.sourceReady) {
+          if (extractorState.view === 'overview') fitExtractorOverview();
+          else fitExtractorEditor();
+        }
+      });
+    }
+
+    $('workflowMaskBtn').addEventListener('click', () => setWorkflow('mask'));
+    $('workflowExtractorBtn').addEventListener('click', () => setWorkflow('extractor'));
+
+    // ---------------------------------------------------------------------
+    // Shared image loading
+    // ---------------------------------------------------------------------
+    $('sharedImageLoader').addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        const img = new Image();
+        img.onload = () => loadImageIntoMask(img, file.name);
+        img.onerror = () => setGlobalStatus('Erreur', 'Cette image ne peut pas être ouverte.');
+        img.src = loadEvent.target.result;
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    });
+
+    function constrainCanvasPan(viewport, contentWidth, contentHeight, zoom, panX, panY, padding = 16) {
+      const viewportWidth = Math.max(0, viewport.clientWidth);
+      const viewportHeight = Math.max(0, viewport.clientHeight);
+      const scaledWidth = Math.max(1, contentWidth * zoom);
+      const scaledHeight = Math.max(1, contentHeight * zoom);
+
+      if (scaledWidth <= Math.max(1, viewportWidth - padding * 2)) {
+        panX = (viewportWidth - scaledWidth) / 2;
+      } else {
+        panX = clamp(panX, viewportWidth - scaledWidth - padding, padding);
+      }
+
+      if (scaledHeight <= Math.max(1, viewportHeight - padding * 2)) {
+        panY = (viewportHeight - scaledHeight) / 2;
+      } else {
+        panY = clamp(panY, viewportHeight - scaledHeight - padding, padding);
+      }
+
+      return { x: Math.round(panX), y: Math.round(panY) };
+    }
+
+    // ---------------------------------------------------------------------
+    // Mask Remover state and canvas
+    // ---------------------------------------------------------------------
+    const maskCanvas = $('maskCanvas');
+    const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+    const maskBaseCanvas = document.createElement('canvas');
+    const maskBaseCtx = maskBaseCanvas.getContext('2d', { willReadFrequently: true });
+
+    const maskState = {
+      loadedImage: null,
+      sourceName: 'image',
+      originalRatio: 1,
+      isNavMode: false,
+      primaryMask: null,
+      activeMask: null,
+      currentColor: null,
+      undo: [],
+      redo: [],
+      maxHistory: 20,
+      antsOffset: 0,
+      borderPath: null,
+      borderMaskRef: null,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      pointers: new Map(),
+      panPointerId: null,
+      panStartX: 0,
+      panStartY: 0,
+      pinchStartDistance: 0,
+      pinchStartZoom: 1,
+      pinchAnchorX: 0,
+      pinchAnchorY: 0,
+      suppressTap: false
+    };
+
+    function updateMaskUiAvailability() {
+      const ready = !!maskState.loadedImage;
+      $('maskSendToExtractorBtn').disabled = !ready;
+      $('maskExportPngBtn').disabled = !ready;
+      $('maskUndoBtn').disabled = maskState.undo.length === 0;
+      $('maskRedoBtn').disabled = maskState.redo.length === 0;
+      $('maskEmptyState').classList.toggle('hidden', ready);
+      $('maskImageInfo').textContent = ready ? `${maskBaseCanvas.width} × ${maskBaseCanvas.height} px` : 'Aucune image';
+    }
+
+    function clearMaskSelection() {
+      maskState.primaryMask = null;
+      maskState.activeMask = null;
+      maskState.currentColor = null;
+      maskState.borderPath = null;
+      maskState.borderMaskRef = null;
+    }
+
+    function updateMaskLockUi() {
+      // Conservé comme point d’entrée interne : le mode « couleur dans une zone » a été supprimé.
+    }
+
+    function updateMaskModeUi() {
+      $('maskActionModeBtn').classList.toggle('active', !maskState.isNavMode);
+      $('maskNavModeBtn').classList.toggle('active', maskState.isNavMode);
+      $('maskModeBadge').textContent = maskState.isNavMode ? 'Mode Navigation' : 'Mode Action';
+    }
+
+    function setMaskNavMode(enabled) {
+      maskState.isNavMode = !!enabled;
+      updateMaskModeUi();
+    }
+
+    $('maskActionModeBtn').addEventListener('click', () => setMaskNavMode(false));
+    $('maskNavModeBtn').addEventListener('click', () => setMaskNavMode(true));
+
+    function loadImageIntoMask(img, filename = 'image') {
+      maskState.loadedImage = img;
+      maskState.sourceName = filename.replace(/\.[^.]+$/, '') || 'image';
+      maskState.originalRatio = (img.naturalWidth || img.width) / (img.naturalHeight || img.height);
+      maskBaseCanvas.width = img.naturalWidth || img.width;
+      maskBaseCanvas.height = img.naturalHeight || img.height;
+      maskBaseCtx.clearRect(0, 0, maskBaseCanvas.width, maskBaseCanvas.height);
+      maskBaseCtx.drawImage(img, 0, 0, maskBaseCanvas.width, maskBaseCanvas.height);
+      $('maskWidthInput').value = maskBaseCanvas.width;
+      $('maskHeightInput').value = maskBaseCanvas.height;
+      maskState.undo.length = 0;
+      maskState.redo.length = 0;
+      clearMaskSelection();
+      setMaskNavMode(false);
+      updateMaskUiAvailability();
+      redrawMask();
+      fitMaskToViewport();
+      resetExtractorSource();
+      $('workflowExtractorBtn').disabled = true;
+      setWorkflow('mask');
+      setGlobalStatus('Mask Remover', `Image chargée : ${maskBaseCanvas.width} × ${maskBaseCanvas.height} px.`);
+    }
+
+    function makeMaskSnapshot() {
+      return {
+        width: maskBaseCanvas.width,
+        height: maskBaseCanvas.height,
+        imageData: maskBaseCtx.getImageData(0, 0, maskBaseCanvas.width, maskBaseCanvas.height)
+      };
+    }
+
+    function saveMaskHistory() {
+      if (!maskState.loadedImage || maskBaseCanvas.width < 1 || maskBaseCanvas.height < 1) return;
+      maskState.undo.push(makeMaskSnapshot());
+      if (maskState.undo.length > maskState.maxHistory) maskState.undo.shift();
+      maskState.redo.length = 0;
+      updateMaskUiAvailability();
+    }
+
+    function restoreMaskSnapshot(snapshot) {
+      if (!snapshot) return;
+      maskBaseCanvas.width = snapshot.width;
+      maskBaseCanvas.height = snapshot.height;
+      maskBaseCtx.putImageData(snapshot.imageData, 0, 0);
+      $('maskWidthInput').value = snapshot.width;
+      $('maskHeightInput').value = snapshot.height;
+      clearMaskSelection();
+      redrawMask();
+      fitMaskToViewport();
+      updateMaskUiAvailability();
+    }
+
+    function undoMask() {
+      if (maskState.undo.length === 0) return;
+      maskState.redo.push(makeMaskSnapshot());
+      if (maskState.redo.length > maskState.maxHistory) maskState.redo.shift();
+      restoreMaskSnapshot(maskState.undo.pop());
+      setGlobalStatus('Mask Remover', 'Annulation appliquée. La sélection a été vidée.');
+    }
+
+    function redoMask() {
+      if (maskState.redo.length === 0) return;
+      maskState.undo.push(makeMaskSnapshot());
+      if (maskState.undo.length > maskState.maxHistory) maskState.undo.shift();
+      restoreMaskSnapshot(maskState.redo.pop());
+      setGlobalStatus('Mask Remover', 'Rétablissement appliqué. La sélection a été vidée.');
+    }
+
+    $('maskUndoBtn').addEventListener('click', undoMask);
+    $('maskRedoBtn').addEventListener('click', redoMask);
+
+    function resizeMaskImage(targetWidth, targetHeight) {
+      if (!maskState.loadedImage) return;
+      const width = clamp(round(targetWidth), 1, 8192);
+      const height = clamp(round(targetHeight), 1, 8192);
+      if (width === maskBaseCanvas.width && height === maskBaseCanvas.height) return;
+      saveMaskHistory();
+      const temp = document.createElement('canvas');
+      temp.width = maskBaseCanvas.width;
+      temp.height = maskBaseCanvas.height;
+      temp.getContext('2d').drawImage(maskBaseCanvas, 0, 0);
+      maskBaseCanvas.width = width;
+      maskBaseCanvas.height = height;
+      maskBaseCtx.imageSmoothingEnabled = false;
+      maskBaseCtx.clearRect(0, 0, width, height);
+      maskBaseCtx.drawImage(temp, 0, 0, width, height);
+      $('maskWidthInput').value = width;
+      $('maskHeightInput').value = height;
+      clearMaskSelection();
+      redrawMask();
+      fitMaskToViewport();
+      updateMaskUiAvailability();
+      setGlobalStatus('Mask Remover', `Image redimensionnée à ${width} × ${height} px.`);
+    }
+
+    $('maskWidthInput').addEventListener('change', () => {
+      if (!maskState.loadedImage) return;
+      const width = clamp(intValue($('maskWidthInput'), maskBaseCanvas.width), 1, 8192);
+      const height = $('maskKeepRatio').checked ? Math.max(1, Math.round(width / maskState.originalRatio)) : intValue($('maskHeightInput'), maskBaseCanvas.height);
+      resizeMaskImage(width, height);
+    });
+
+    $('maskHeightInput').addEventListener('change', () => {
+      if (!maskState.loadedImage) return;
+      const height = clamp(intValue($('maskHeightInput'), maskBaseCanvas.height), 1, 8192);
+      const width = $('maskKeepRatio').checked ? Math.max(1, Math.round(height * maskState.originalRatio)) : intValue($('maskWidthInput'), maskBaseCanvas.width);
+      resizeMaskImage(width, height);
+    });
+
+    $('maskResetOriginalBtn').addEventListener('click', () => {
+      if (!maskState.loadedImage) return;
+      saveMaskHistory();
+      const width = maskState.loadedImage.naturalWidth || maskState.loadedImage.width;
+      const height = maskState.loadedImage.naturalHeight || maskState.loadedImage.height;
+      maskBaseCanvas.width = width;
+      maskBaseCanvas.height = height;
+      maskBaseCtx.clearRect(0, 0, width, height);
+      maskBaseCtx.drawImage(maskState.loadedImage, 0, 0, width, height);
+      $('maskWidthInput').value = width;
+      $('maskHeightInput').value = height;
+      clearMaskSelection();
+      redrawMask();
+      fitMaskToViewport();
+      setGlobalStatus('Mask Remover', 'Image restaurée depuis l’original.');
+    });
+
+    function countMask(mask) {
+      if (!mask) return 0;
+      let count = 0;
+      for (let i = 0; i < mask.length; i++) if (mask[i] === 1) count++;
+      return count;
+    }
+
+    function pixelMatches(data, offset, target, tolerance) {
+      const alpha = data[offset + 3];
+      if (target.a < 15) return alpha < 15;
+      if (alpha < 1) return false;
+      return Math.abs(data[offset] - target.r) <= tolerance
+        && Math.abs(data[offset + 1] - target.g) <= tolerance
+        && Math.abs(data[offset + 2] - target.b) <= tolerance;
+    }
+
+    function selectMatchingColor(target, tolerance, limitMask = null) {
+      const image = maskBaseCtx.getImageData(0, 0, maskBaseCanvas.width, maskBaseCanvas.height).data;
+      const result = new Uint8Array(maskBaseCanvas.width * maskBaseCanvas.height);
+      for (let offset = 0; offset < image.length; offset += 4) {
+        const index = offset / 4;
+        if (limitMask && limitMask[index] !== 1) continue;
+        if (pixelMatches(image, offset, target, tolerance)) result[index] = 1;
+      }
+      return result;
+    }
+
+    function pickColorAt(x, y) {
+      const pixel = maskBaseCtx.getImageData(x, y, 1, 1).data;
+      return { r: pixel[0], g: pixel[1], b: pixel[2], a: pixel[3] };
+    }
+
+    function selectMaskZoneAt(x, y) {
+      maskState.currentColor = pickColorAt(x, y);
+      const tolerance = intValue($('maskZoneTolerance'), 30);
+      maskState.primaryMask = selectMatchingColor(maskState.currentColor, tolerance);
+      maskState.activeMask = maskState.primaryMask;
+      maskState.borderPath = null;
+      setMaskNavMode(true);
+      redrawMask();
+      setGlobalStatus('Mask Remover', `Zone sélectionnée : ${countMask(maskState.primaryMask)} pixels.`);
+    }
+
+    function rerunMaskSelection() {
+      if (!maskState.currentColor) return;
+      maskState.primaryMask = selectMatchingColor(maskState.currentColor, intValue($('maskZoneTolerance'), 30));
+      maskState.activeMask = maskState.primaryMask;
+      maskState.borderPath = null;
+      redrawMask();
+    }
+
+    $('maskZoneTolerance').addEventListener('input', () => {
+      $('maskZoneToleranceValue').textContent = $('maskZoneTolerance').value;
+      rerunMaskSelection();
+    });
+
+    function morphMask(mask, width, height, type, steps) {
+      if (!mask) return null;
+      let source = mask;
+      for (let step = 0; step < steps; step++) {
+        const target = new Uint8Array(width * height);
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const index = y * width + x;
+            const left = x > 0 ? source[index - 1] : 0;
+            const right = x < width - 1 ? source[index + 1] : 0;
+            const up = y > 0 ? source[index - width] : 0;
+            const down = y < height - 1 ? source[index + width] : 0;
+            target[index] = type === 'grow'
+              ? (source[index] || left || right || up || down ? 1 : 0)
+              : (source[index] && left && right && up && down ? 1 : 0);
+          }
+        }
+        source = target;
+      }
+      return source;
+    }
+
+    function applyMaskMorphology(type) {
+      if (!maskState.loadedImage || !maskState.primaryMask) {
+        setGlobalStatus('Mask Remover', 'Crée d’abord une zone initiale.');
+        return;
+      }
+      const steps = clamp(intValue($('maskMorphInput'), 1), 1, 64);
+      maskState.primaryMask = morphMask(maskState.primaryMask, maskBaseCanvas.width, maskBaseCanvas.height, type, steps);
+      maskState.activeMask = maskState.primaryMask;
+      maskState.currentColor = null;
+      maskState.borderPath = null;
+      redrawMask();
+      setGlobalStatus('Mask Remover', `${type === 'grow' ? 'Zone gonflée' : 'Zone dégonflée'} de ${steps} px.`);
+    }
+
+    $('maskGrowBtn').addEventListener('click', () => applyMaskMorphology('grow'));
+    $('maskShrinkBtn').addEventListener('click', () => applyMaskMorphology('shrink'));
+
+
+    function applyMaskAction(mode) {
+      if (!maskState.loadedImage || !maskState.activeMask) {
+        setGlobalStatus('Mask Remover', 'Aucune sélection active.');
+        return;
+      }
+      const imageData = maskBaseCtx.getImageData(0, 0, maskBaseCanvas.width, maskBaseCanvas.height);
+      let changed = 0;
+      for (let offset = 0; offset < imageData.data.length; offset += 4) {
+        const index = offset / 4;
+        if (maskState.activeMask[index] !== 1) continue;
+        if (mode === 'delete') {
+          imageData.data[offset] = 0;
+          imageData.data[offset + 1] = 0;
+          imageData.data[offset + 2] = 0;
+          imageData.data[offset + 3] = 0;
+        } else if (mode === 'black') {
+          imageData.data[offset] = 0;
+          imageData.data[offset + 1] = 0;
+          imageData.data[offset + 2] = 0;
+        } else if (mode === 'gray') {
+          const gray = Math.round(.299 * imageData.data[offset] + .587 * imageData.data[offset + 1] + .114 * imageData.data[offset + 2]);
+          imageData.data[offset] = gray;
+          imageData.data[offset + 1] = gray;
+          imageData.data[offset + 2] = gray;
+        }
+        changed++;
+      }
+      if (!changed) {
+        setGlobalStatus('Mask Remover', 'Aucun pixel n’a été modifié.');
+        return;
+      }
+      saveMaskHistory();
+      maskBaseCtx.putImageData(imageData, 0, 0);
+      maskState.currentColor = null;
+      maskState.activeMask = null;
+      maskState.borderPath = null;
+      redrawMask();
+      updateMaskUiAvailability();
+      setGlobalStatus('Mask Remover', `${changed} pixels modifiés.`);
+    }
+
+    $('maskDeleteBtn').addEventListener('click', () => applyMaskAction('delete'));
+    $('maskBlackBtn').addEventListener('click', () => applyMaskAction('black'));
+    $('maskGrayBtn').addEventListener('click', () => applyMaskAction('gray'));
+
+    $('maskClearSelectionBtn').addEventListener('click', () => {
+      clearMaskSelection();
+      setMaskNavMode(false);
+      redrawMask();
+      setGlobalStatus('Mask Remover', 'Sélection annulée. Les modifications sont conservées.');
+    });
+
+    $('maskAutoBackgroundBtn').addEventListener('click', () => {
+      if (!maskState.loadedImage) return;
+      const sampleX = Math.min(5, Math.max(0, maskBaseCanvas.width - 1));
+      const sampleY = Math.min(5, Math.max(0, maskBaseCanvas.height - 1));
+      maskState.primaryMask = selectMatchingColor(pickColorAt(sampleX, sampleY), intValue($('maskZoneTolerance'), 30));
+      maskState.primaryMask = morphMask(maskState.primaryMask, maskBaseCanvas.width, maskBaseCanvas.height, 'grow', clamp(intValue($('maskMorphInput'), 1), 1, 64));
+      maskState.activeMask = maskState.primaryMask;
+      applyMaskAction('delete');
+      clearMaskSelection();
+      redrawMask();
+      setGlobalStatus('Mask Remover', 'Fond automatique supprimé depuis le coin supérieur gauche.');
+    });
+
+    function getMaskBorderPath(mask) {
+      if (!mask) return null;
+      if (maskState.borderPath && maskState.borderMaskRef === mask) return maskState.borderPath;
+      const width = maskBaseCanvas.width;
+      const height = maskBaseCanvas.height;
+      const path = new Path2D();
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const index = y * width + x;
+          if (mask[index] !== 1) continue;
+          if (x === 0 || mask[index - 1] !== 1) { path.moveTo(x, y); path.lineTo(x, y + 1); }
+          if (x === width - 1 || mask[index + 1] !== 1) { path.moveTo(x + 1, y); path.lineTo(x + 1, y + 1); }
+          if (y === 0 || mask[index - width] !== 1) { path.moveTo(x, y); path.lineTo(x + 1, y); }
+          if (y === height - 1 || mask[index + width] !== 1) { path.moveTo(x, y + 1); path.lineTo(x + 1, y + 1); }
+        }
+      }
+      maskState.borderPath = path;
+      maskState.borderMaskRef = mask;
+      return path;
+    }
+
+    function redrawMask() {
+      if (!maskState.loadedImage) {
+        maskCanvas.width = 1;
+        maskCanvas.height = 1;
+        maskCtx.clearRect(0, 0, 1, 1);
+        updateMaskStageTransform();
+        return;
+      }
+      maskCanvas.width = maskBaseCanvas.width;
+      maskCanvas.height = maskBaseCanvas.height;
+      maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+      maskCtx.drawImage(maskBaseCanvas, 0, 0);
+
+      if (maskState.activeMask) {
+        const overlayData = maskCtx.createImageData(maskCanvas.width, maskCanvas.height);
+        for (let i = 0; i < maskState.activeMask.length; i++) {
+          if (maskState.activeMask[i] !== 1) continue;
+          const offset = i * 4;
+          overlayData.data[offset] = 255;
+          overlayData.data[offset + 1] = 79;
+          overlayData.data[offset + 2] = 99;
+          overlayData.data[offset + 3] = 88;
+        }
+        const overlay = document.createElement('canvas');
+        overlay.width = maskCanvas.width;
+        overlay.height = maskCanvas.height;
+        overlay.getContext('2d').putImageData(overlayData, 0, 0);
+        maskCtx.drawImage(overlay, 0, 0);
+
+        const path = getMaskBorderPath(maskState.activeMask);
+        if (path) {
+          const screenFix = 1 / Math.max(maskState.zoom, .1);
+          maskCtx.save();
+          maskCtx.setLineDash([]);
+          maskCtx.lineWidth = Math.max(1, 2 * screenFix);
+          maskCtx.strokeStyle = 'rgba(0,0,0,.9)';
+          maskCtx.stroke(path);
+          maskCtx.setLineDash([6 * screenFix, 6 * screenFix]);
+          maskCtx.lineDashOffset = -(maskState.antsOffset * screenFix);
+          maskCtx.lineWidth = Math.max(.75, screenFix);
+          maskCtx.strokeStyle = 'rgba(255,255,255,.98)';
+          maskCtx.stroke(path);
+          maskCtx.restore();
+        }
+      }
+      updateMaskStageTransform();
+      updateMaskUiAvailability();
+    }
+
+    function updateMaskStageTransform() {
+      if (maskState.loadedImage) {
+        const bounded = constrainCanvasPan($('maskViewport'), maskBaseCanvas.width, maskBaseCanvas.height, maskState.zoom, maskState.panX, maskState.panY);
+        maskState.panX = bounded.x;
+        maskState.panY = bounded.y;
+      }
+      $('maskCanvasStage').style.transform = `translate(${maskState.panX}px, ${maskState.panY}px) scale(${maskState.zoom})`;
+      $('maskZoomBadge').textContent = `${Math.round(maskState.zoom * 100)}%`;
+    }
+
+    function fitMaskToViewport() {
+      if (!maskState.loadedImage) return;
+      const viewport = $('maskViewport');
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+      if (!width || !height) return;
+      maskState.zoom = clamp(Math.min((width - 48) / maskBaseCanvas.width, (height - 48) / maskBaseCanvas.height), .05, 16);
+      maskState.panX = Math.round((width - maskBaseCanvas.width * maskState.zoom) / 2);
+      maskState.panY = Math.round((height - maskBaseCanvas.height * maskState.zoom) / 2);
+      updateMaskStageTransform();
+    }
+
+    function zoomMaskAt(clientX, clientY, nextZoom) {
+      if (!maskState.loadedImage) return;
+      const rect = $('maskViewport').getBoundingClientRect();
+      const localX = (clientX - rect.left - maskState.panX) / maskState.zoom;
+      const localY = (clientY - rect.top - maskState.panY) / maskState.zoom;
+      maskState.zoom = clamp(nextZoom, .05, 32);
+      maskState.panX = clientX - rect.left - localX * maskState.zoom;
+      maskState.panY = clientY - rect.top - localY * maskState.zoom;
+      updateMaskStageTransform();
+      redrawMask();
+    }
+
+    function maskClientToCanvas(clientX, clientY) {
+      const rect = $('maskViewport').getBoundingClientRect();
+      const x = Math.floor((clientX - rect.left - maskState.panX) / maskState.zoom);
+      const y = Math.floor((clientY - rect.top - maskState.panY) / maskState.zoom);
+      if (x < 0 || y < 0 || x >= maskBaseCanvas.width || y >= maskBaseCanvas.height) return null;
+      return { x, y };
+    }
+
+    $('maskFitBtn').addEventListener('click', fitMaskToViewport);
+    $('maskZoomInBtn').addEventListener('click', () => {
+      const rect = $('maskViewport').getBoundingClientRect();
+      zoomMaskAt(rect.left + rect.width / 2, rect.top + rect.height / 2, maskState.zoom * 1.2);
+    });
+    $('maskZoomOutBtn').addEventListener('click', () => {
+      const rect = $('maskViewport').getBoundingClientRect();
+      zoomMaskAt(rect.left + rect.width / 2, rect.top + rect.height / 2, maskState.zoom / 1.2);
+    });
+
+    $('maskViewport').addEventListener('wheel', (event) => {
+      if (!maskState.loadedImage) return;
+      event.preventDefault();
+      zoomMaskAt(event.clientX, event.clientY, maskState.zoom * (event.deltaY < 0 ? 1.12 : .88));
+    }, { passive: false });
+
+    function pointerDistance(a, b) {
+      return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    }
+
+    $('maskViewport').addEventListener('pointerdown', (event) => {
+      if (!maskState.loadedImage) return;
+      event.preventDefault();
+      $('maskViewport').setPointerCapture?.(event.pointerId);
+      maskState.pointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+
+      if (maskState.pointers.size === 2) {
+        const points = Array.from(maskState.pointers.values());
+        const rect = $('maskViewport').getBoundingClientRect();
+        const midX = (points[0].clientX + points[1].clientX) / 2;
+        const midY = (points[0].clientY + points[1].clientY) / 2;
+        maskState.pinchStartDistance = pointerDistance(points[0], points[1]) || 1;
+        maskState.pinchStartZoom = maskState.zoom;
+        maskState.pinchAnchorX = (midX - rect.left - maskState.panX) / maskState.zoom;
+        maskState.pinchAnchorY = (midY - rect.top - maskState.panY) / maskState.zoom;
+        maskState.suppressTap = true;
+        maskState.panPointerId = null;
+        return;
+      }
+
+      if (maskState.isNavMode || event.button === 1 || event.button === 2) {
+        maskState.panPointerId = event.pointerId;
+        maskState.panStartX = event.clientX - maskState.panX;
+        maskState.panStartY = event.clientY - maskState.panY;
+      }
+    });
+
+    $('maskViewport').addEventListener('pointermove', (event) => {
+      if (!maskState.pointers.has(event.pointerId)) return;
+      event.preventDefault();
+      maskState.pointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+
+      if (maskState.pointers.size === 2) {
+        const points = Array.from(maskState.pointers.values());
+        const rect = $('maskViewport').getBoundingClientRect();
+        const midX = (points[0].clientX + points[1].clientX) / 2;
+        const midY = (points[0].clientY + points[1].clientY) / 2;
+        maskState.zoom = clamp(maskState.pinchStartZoom * (pointerDistance(points[0], points[1]) / maskState.pinchStartDistance), .05, 32);
+        maskState.panX = midX - rect.left - maskState.pinchAnchorX * maskState.zoom;
+        maskState.panY = midY - rect.top - maskState.pinchAnchorY * maskState.zoom;
+        updateMaskStageTransform();
+        redrawMask();
+        return;
+      }
+
+      if (maskState.panPointerId === event.pointerId) {
+        maskState.panX = event.clientX - maskState.panStartX;
+        maskState.panY = event.clientY - maskState.panStartY;
+        updateMaskStageTransform();
+      }
+    });
+
+    function finishMaskPointer(event) {
+      if (!maskState.pointers.has(event.pointerId)) return;
+      const wasTap = !maskState.isNavMode && !maskState.suppressTap && maskState.pointers.size === 1 && event.button === 0;
+      maskState.pointers.delete(event.pointerId);
+      $('maskViewport').releasePointerCapture?.(event.pointerId);
+      if (wasTap) {
+        const pos = maskClientToCanvas(event.clientX, event.clientY);
+        if (pos) {
+          selectMaskZoneAt(pos.x, pos.y);
+        }
+      }
+      if (maskState.pointers.size === 0) maskState.suppressTap = false;
+      maskState.panPointerId = null;
+    }
+
+    $('maskViewport').addEventListener('pointerup', finishMaskPointer);
+    $('maskViewport').addEventListener('pointercancel', (event) => {
+      maskState.pointers.delete(event.pointerId);
+      if (maskState.pointers.size === 0) maskState.suppressTap = false;
+      maskState.panPointerId = null;
+    });
+    $('maskViewport').addEventListener('contextmenu', (event) => event.preventDefault());
+
+    setInterval(() => {
+      if (!maskState.activeMask || currentWorkflow !== 'mask') return;
+      maskState.antsOffset = (maskState.antsOffset + 1) % 12;
+      redrawMask();
+    }, 120);
+
+    $('maskExportPngBtn').addEventListener('click', async () => {
+      if (!maskState.loadedImage) return;
+      const blob = await canvasToBlob(maskBaseCanvas);
+      downloadBlob(blob, `${maskState.sourceName}_mask_removed.png`);
+      setGlobalStatus('Mask Remover', 'Export du PNG nettoyé lancé.');
+    });
+
+    // ---------------------------------------------------------------------
+    // Sprite Extractor state and source
+    // ---------------------------------------------------------------------
+    const extractorSourceCanvas = $('extractorSourceCanvas');
+    const extractorSourceCtx = extractorSourceCanvas.getContext('2d', { willReadFrequently: true });
+    const extractorOverlayCanvas = $('extractorOverlayCanvas');
+    const extractorOverlayCtx = extractorOverlayCanvas.getContext('2d');
+    const extractorEditorCanvas = $('extractorEditorCanvas');
+    const extractorEditorCtx = extractorEditorCanvas.getContext('2d', { willReadFrequently: true });
+
+    const extractorState = {
+      sourceReady: false,
+      sourceName: 'spritesheet',
+      sourceImageData: null,
+      detections: [],
+      selectedIndex: -1,
+      view: 'overview',
+      cellWidth: 32,
+      cellHeight: 32,
+      overviewZoom: 1,
+      overviewPanX: 0,
+      overviewPanY: 0,
+      overviewPanActive: false,
+      overviewPanButton: -1,
+      overviewPanStartX: 0,
+      overviewPanStartY: 0,
+      editorZoom: 1,
+      editorPanX: 0,
+      editorPanY: 0,
+      editorPointerActive: false,
+      editorPanActive: false,
+      editorPanStartX: 0,
+      editorPanStartY: 0,
+      editorLastX: 0,
+      editorLastY: 0,
+      editorStartX: 0,
+      editorStartY: 0,
+      editorStartOffsetX: 0,
+      editorStartOffsetY: 0,
+      editorStartAnchorX: 0,
+      editorStartAnchorY: 0,
+      eraseStarted: false,
+      spacePressed: false
+    };
+
+    function resetExtractorSource() {
+      extractorState.sourceReady = false;
+      extractorState.sourceImageData = null;
+      extractorState.detections = [];
+      extractorState.selectedIndex = -1;
+      extractorSourceCanvas.width = 1;
+      extractorSourceCanvas.height = 1;
+      extractorOverlayCanvas.width = 1;
+      extractorOverlayCanvas.height = 1;
+      extractorState.view = 'overview';
+      updateExtractorSubtabs();
+      updateExtractorUi();
+      redrawExtractorOverlay();
+    }
+
+    function injectMaskIntoExtractor(autoAnalyze = true) {
+      if (!maskState.loadedImage) return;
+      extractorSourceCanvas.width = maskBaseCanvas.width;
+      extractorSourceCanvas.height = maskBaseCanvas.height;
+      extractorSourceCtx.clearRect(0, 0, extractorSourceCanvas.width, extractorSourceCanvas.height);
+      extractorSourceCtx.drawImage(maskBaseCanvas, 0, 0);
+      extractorState.sourceImageData = extractorSourceCtx.getImageData(0, 0, extractorSourceCanvas.width, extractorSourceCanvas.height);
+      extractorState.sourceReady = true;
+      extractorState.sourceName = maskState.sourceName || 'spritesheet';
+      extractorState.detections = [];
+      extractorState.selectedIndex = -1;
+      $('extractorSheetName').value = `${extractorState.sourceName}_spritesheet`;
+      $('workflowExtractorBtn').disabled = false;
+      $('extractorAnalyzeBtn').disabled = false;
+      updateExtractorUi();
+      setExtractorView('overview');
+      setWorkflow('extractor');
+      requestAnimationFrame(() => fitExtractorOverview());
+      if (autoAnalyze) analyzeExtractorSource();
+      else setGlobalStatus('Sprite Extractor', 'Image nettoyée injectée. Lance la détection.');
+    }
+
+    $('maskSendToExtractorBtn').addEventListener('click', () => injectMaskIntoExtractor(true));
+    $('extractorRefreshFromMaskBtn').addEventListener('click', () => injectMaskIntoExtractor(true));
+
+    function updateExtractorUi() {
+      const hasSource = extractorState.sourceReady;
+      const hasSprites = extractorState.detections.length > 0;
+      const hasSelection = extractorState.selectedIndex >= 0 && extractorState.selectedIndex < extractorState.detections.length;
+      $('extractorEmptyState').classList.toggle('hidden', hasSource);
+      $('extractorAnalyzeBtn').disabled = !hasSource;
+      $('extractorCleanBtn').disabled = !hasSprites;
+      const exportDisabled = !hasSprites || !$('extractorSheetName').value.trim();
+      $('extractorExportBtn').disabled = exportDisabled;
+      $('extractorPreviewJsonBtn').disabled = exportDisabled;
+      $('extractorExportJsonBtn').disabled = exportDisabled;
+      $('extractorOverviewTab').disabled = !hasSource;
+      $('extractorEditorTab').disabled = !hasSelection;
+      $('extractorSpriteCount').textContent = extractorState.detections.length;
+      $('extractorSelectionLabel').textContent = hasSelection ? extractorState.detections[extractorState.selectedIndex].id : 'Aucune sélection';
+      setInputsDisabled([
+        $('extractorSpriteId'), $('extractorSpriteWidth'), $('extractorSpriteHeight'),
+        $('extractorOffsetX'), $('extractorOffsetY'), $('extractorAnchorX'), $('extractorAnchorY'),
+        $('extractorCenterBtn'), $('extractorResetSpriteSizeBtn'), $('extractorDeleteSpriteBtn')
+      ], !hasSelection);
+      updateEraseUndoButton();
+      updateExportStatus();
+    }
+
+    function setExtractorView(view) {
+      if (view === 'editor' && extractorState.selectedIndex < 0) return;
+      extractorState.view = view;
+      const overview = view === 'overview';
+      $('extractorOverviewView').classList.toggle('active', overview);
+      $('extractorEditorView').classList.toggle('active', !overview);
+      $('extractorOverviewTab').classList.toggle('active', overview);
+      $('extractorEditorTab').classList.toggle('active', !overview);
+      if (overview) requestAnimationFrame(() => fitExtractorOverview());
+      else requestAnimationFrame(() => fitExtractorEditor());
+    }
+
+    function updateExtractorSubtabs() {
+      setExtractorView(extractorState.view === 'editor' && extractorState.selectedIndex >= 0 ? 'editor' : 'overview');
+    }
+
+    $('extractorOverviewTab').addEventListener('click', () => setExtractorView('overview'));
+    $('extractorEditorTab').addEventListener('click', () => setExtractorView('editor'));
+
+    function analyzeExtractorSource() {
+      if (!extractorState.sourceReady || !extractorState.sourceImageData) return;
+      const width = extractorSourceCanvas.width;
+      const height = extractorSourceCanvas.height;
+      const alphaThreshold = clamp(intValue($('extractorAlphaThreshold'), 1), 0, 255);
+      const minPixels = Math.max(1, intValue($('extractorMinPixels'), 4));
+      const minSize = Math.max(1, intValue($('extractorMinSize'), 5));
+      const data = extractorState.sourceImageData.data;
+      const mask = new Uint8Array(width * height);
+      for (let index = 0; index < mask.length; index++) mask[index] = data[index * 4 + 3] > alphaThreshold ? 1 : 0;
+
+      const visited = new Uint8Array(mask.length);
+      const queueX = new Int32Array(mask.length);
+      const queueY = new Int32Array(mask.length);
+      const components = [];
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const start = y * width + x;
+          if (!mask[start] || visited[start]) continue;
+          let head = 0;
+          let tail = 0;
+          queueX[tail] = x;
+          queueY[tail] = y;
+          tail++;
+          visited[start] = 1;
+          let minX = x, minY = y, maxX = x, maxY = y, count = 0;
+
+          while (head < tail) {
+            const cx = queueX[head];
+            const cy = queueY[head];
+            head++;
+            count++;
+            if (cx < minX) minX = cx;
+            if (cx > maxX) maxX = cx;
+            if (cy < minY) minY = cy;
+            if (cy > maxY) maxY = cy;
+
+            for (let ny = cy - 1; ny <= cy + 1; ny++) {
+              if (ny < 0 || ny >= height) continue;
+              for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                if (nx < 0 || nx >= width) continue;
+                const next = ny * width + nx;
+                if (!mask[next] || visited[next]) continue;
+                visited[next] = 1;
+                queueX[tail] = nx;
+                queueY[tail] = ny;
+                tail++;
+              }
+            }
+          }
+
+          const boxWidth = maxX - minX + 1;
+          const boxHeight = maxY - minY + 1;
+          if (count >= minPixels && boxWidth >= minSize && boxHeight >= minSize) {
+            components.push({ minX, minY, maxX, maxY, boxWidth, boxHeight, pixelCount: count });
+          }
+        }
+      }
+
+      components.sort((a, b) => a.minY - b.minY || a.minX - b.minX);
+      const maxWidth = components.reduce((max, box) => Math.max(max, box.boxWidth), 1);
+      const maxHeight = components.reduce((max, box) => Math.max(max, box.boxHeight), 1);
+      extractorState.cellWidth = maxWidth;
+      extractorState.cellHeight = maxHeight;
+      $('extractorCellWidth').value = maxWidth;
+      $('extractorCellHeight').value = maxHeight;
+
+      extractorState.detections = components.map((box, index) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = box.boxWidth;
+        canvas.height = box.boxHeight;
+        canvas.getContext('2d').putImageData(extractorSourceCtx.getImageData(box.minX, box.minY, box.boxWidth, box.boxHeight), 0, 0);
+        return {
+          id: `sprite_${index}`,
+          sourceX: box.minX,
+          sourceY: box.minY,
+          sourceWidth: box.boxWidth,
+          sourceHeight: box.boxHeight,
+          pixelCount: box.pixelCount,
+          canvas,
+          displayWidth: box.boxWidth,
+          displayHeight: box.boxHeight,
+          offsetX: Math.round((maxWidth - box.boxWidth) / 2),
+          offsetY: maxHeight - box.boxHeight,
+          anchorX: Math.round(maxWidth / 2),
+          anchorY: maxHeight,
+          eraseUndo: []
+        };
+      });
+
+      extractorState.selectedIndex = extractorState.detections.length ? 0 : -1;
+      renderExtractorSpriteList();
+      redrawExtractorOverlay();
+      updateSelectedSpriteInputs();
+      updateExtractorUi();
+      if (extractorState.selectedIndex >= 0) setExtractorView('editor');
+      else setExtractorView('overview');
+      setGlobalStatus('Sprite Extractor', `${extractorState.detections.length} sprite(s) détecté(s).`);
+    }
+
+    $('extractorAnalyzeBtn').addEventListener('click', analyzeExtractorSource);
+
+    function redrawExtractorOverlay() {
+      extractorOverlayCanvas.width = extractorSourceCanvas.width;
+      extractorOverlayCanvas.height = extractorSourceCanvas.height;
+      extractorOverlayCtx.clearRect(0, 0, extractorOverlayCanvas.width, extractorOverlayCanvas.height);
+      extractorState.detections.forEach((sprite, index) => {
+        const selected = index === extractorState.selectedIndex;
+        extractorOverlayCtx.strokeStyle = selected ? '#ff6b78' : '#5da8ff';
+        extractorOverlayCtx.lineWidth = selected ? 2 : 1;
+        extractorOverlayCtx.strokeRect(sprite.sourceX + .5, sprite.sourceY + .5, sprite.sourceWidth - 1, sprite.sourceHeight - 1);
+        extractorOverlayCtx.fillStyle = selected ? '#ff6b78' : '#5da8ff';
+        extractorOverlayCtx.font = '10px system-ui';
+        extractorOverlayCtx.fillText(String(index), sprite.sourceX + 3, Math.max(10, sprite.sourceY + 11));
+      });
+      updateExtractorOverviewTransform();
+    }
+
+    function renderExtractorSpriteList() {
+      const list = $('extractorSpriteList');
+      list.innerHTML = '';
+      extractorState.detections.forEach((sprite, index) => {
+        const item = document.createElement('div');
+        item.className = `sprite-item${index === extractorState.selectedIndex ? ' active' : ''}`;
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-label', `Ouvrir ${sprite.id}`);
+        item.innerHTML = `
+          <button class="sprite-delete-btn" type="button" title="Supprimer ${sprite.id}" aria-label="Supprimer ${sprite.id}">×</button>
+          <div class="sprite-thumb"><img alt="${sprite.id}" src="${sprite.canvas.toDataURL('image/png')}" /></div>
+          <div class="sprite-name">${sprite.id}</div>
+          <div class="sprite-meta">Visible ${sprite.displayWidth} × ${sprite.displayHeight} · Cellule ${extractorState.cellWidth} × ${extractorState.cellHeight}</div>`;
+        item.addEventListener('click', () => selectExtractorSprite(index, true));
+        item.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectExtractorSprite(index, true);
+          }
+        });
+        item.querySelector('.sprite-delete-btn').addEventListener('click', (event) => {
+          event.stopPropagation();
+          deleteExtractorSpriteAt(index);
+        });
+        list.appendChild(item);
+      });
+    }
+
+    $('extractorSpriteList').addEventListener('wheel', (event) => {
+      const list = $('extractorSpriteList');
+      const horizontalIntent = Math.abs(event.deltaY) > Math.abs(event.deltaX);
+      const delta = horizontalIntent ? event.deltaY : event.deltaX;
+      if (list.scrollWidth > list.clientWidth && delta !== 0) {
+        event.preventDefault();
+        list.scrollLeft += delta;
+      }
+    }, { passive: false });
+
+    function selectExtractorSprite(index, openEditor = false) {
+      if (index < 0 || index >= extractorState.detections.length) return;
+      extractorState.selectedIndex = index;
+      renderExtractorSpriteList();
+      const activeItem = $('extractorSpriteList').children[index];
+      activeItem?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      redrawExtractorOverlay();
+      updateSelectedSpriteInputs();
+      updateExtractorUi();
+      renderExtractorEditor();
+      if (openEditor) setExtractorView('editor');
+    }
+
+    function updateSelectedSpriteInputs() {
+      const sprite = extractorState.detections[extractorState.selectedIndex];
+      if (!sprite) {
+        $('extractorSpriteId').value = '';
+        return;
+      }
+      $('extractorSpriteId').value = sprite.id;
+      $('extractorSpriteWidth').value = sprite.displayWidth;
+      $('extractorSpriteHeight').value = sprite.displayHeight;
+      $('extractorOffsetX').value = sprite.offsetX;
+      $('extractorOffsetY').value = sprite.offsetY;
+      $('extractorAnchorX').value = sprite.anchorX;
+      $('extractorAnchorY').value = sprite.anchorY;
+      updateEraseUndoButton();
+    }
+
+    function getSelectedSprite() {
+      return extractorState.detections[extractorState.selectedIndex] || null;
+    }
+
+    function centerSpriteAndAnchor(sprite) {
+      sprite.offsetX = Math.round((extractorState.cellWidth - sprite.displayWidth) / 2);
+      sprite.offsetY = extractorState.cellHeight - sprite.displayHeight;
+      sprite.anchorX = Math.round(extractorState.cellWidth / 2);
+      sprite.anchorY = extractorState.cellHeight;
+    }
+
+    $('extractorCenterBtn').addEventListener('click', () => {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      centerSpriteAndAnchor(sprite);
+      updateSelectedSpriteInputs();
+      renderExtractorEditor();
+      renderExtractorSpriteList();
+      updateExportStatus();
+      setGlobalStatus('Sprite Extractor', 'Sprite centré, aligné en bas et anchor placé au centre-bas.');
+    });
+
+    $('extractorAutoCellBtn').addEventListener('click', () => {
+      if (!extractorState.detections.length) return;
+      extractorState.cellWidth = Math.max(1, ...extractorState.detections.map((sprite) => sprite.displayWidth));
+      extractorState.cellHeight = Math.max(1, ...extractorState.detections.map((sprite) => sprite.displayHeight));
+      $('extractorCellWidth').value = extractorState.cellWidth;
+      $('extractorCellHeight').value = extractorState.cellHeight;
+      extractorState.detections.forEach(centerSpriteAndAnchor);
+      updateSelectedSpriteInputs();
+      renderExtractorEditor();
+      renderExtractorSpriteList();
+      updateExportStatus();
+      fitExtractorEditor();
+      setGlobalStatus('Sprite Extractor', 'Cellule globale recalculée et tous les sprites ont été centrés.');
+    });
+
+    function applyGlobalCellSize() {
+      const newWidth = Math.max(1, intValue($('extractorCellWidth'), extractorState.cellWidth));
+      const newHeight = Math.max(1, intValue($('extractorCellHeight'), extractorState.cellHeight));
+      const diffWidth = newWidth - extractorState.cellWidth;
+      const diffHeight = newHeight - extractorState.cellHeight;
+      extractorState.cellWidth = newWidth;
+      extractorState.cellHeight = newHeight;
+      extractorState.detections.forEach((sprite) => {
+        const horizontalShift = Math.round(diffWidth / 2);
+        sprite.offsetX += horizontalShift;
+        sprite.anchorX += horizontalShift;
+        sprite.offsetY += diffHeight;
+        sprite.anchorY += diffHeight;
+      });
+      $('extractorCellWidth').value = newWidth;
+      $('extractorCellHeight').value = newHeight;
+      updateSelectedSpriteInputs();
+      renderExtractorEditor();
+      renderExtractorSpriteList();
+      updateExportStatus();
+      fitExtractorEditor();
+      setGlobalStatus('Sprite Extractor', `Cellule globale appliquée à tous : ${newWidth} × ${newHeight}.`);
+    }
+
+    $('extractorCellWidth').addEventListener('change', applyGlobalCellSize);
+    $('extractorCellHeight').addEventListener('change', applyGlobalCellSize);
+
+    function applySelectedSpriteVisualSize() {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      const newWidth = Math.max(1, intValue($('extractorSpriteWidth'), sprite.displayWidth));
+      const newHeight = Math.max(1, intValue($('extractorSpriteHeight'), sprite.displayHeight));
+      const centerX = sprite.offsetX + sprite.displayWidth / 2;
+      const bottomY = sprite.offsetY + sprite.displayHeight;
+      sprite.displayWidth = newWidth;
+      sprite.displayHeight = newHeight;
+      sprite.offsetX = Math.round(centerX - newWidth / 2);
+      sprite.offsetY = Math.round(bottomY - newHeight);
+      updateSelectedSpriteInputs();
+      renderExtractorEditor();
+      renderExtractorSpriteList();
+      updateExportStatus();
+      setGlobalStatus('Sprite Extractor', `Taille visuelle individuelle : ${newWidth} × ${newHeight}.`);
+    }
+
+    $('extractorSpriteWidth').addEventListener('change', applySelectedSpriteVisualSize);
+    $('extractorSpriteHeight').addEventListener('change', applySelectedSpriteVisualSize);
+
+    function applySelectedNumericField(field, property) {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      sprite[property] = round(Number(field.value));
+      field.value = sprite[property];
+      renderExtractorEditor();
+      renderExtractorSpriteList();
+      updateExportStatus();
+    }
+
+    $('extractorOffsetX').addEventListener('change', () => applySelectedNumericField($('extractorOffsetX'), 'offsetX'));
+    $('extractorOffsetY').addEventListener('change', () => applySelectedNumericField($('extractorOffsetY'), 'offsetY'));
+    $('extractorAnchorX').addEventListener('change', () => applySelectedNumericField($('extractorAnchorX'), 'anchorX'));
+    $('extractorAnchorY').addEventListener('change', () => applySelectedNumericField($('extractorAnchorY'), 'anchorY'));
+
+    $('extractorSpriteId').addEventListener('change', () => {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      const value = $('extractorSpriteId').value.trim();
+      sprite.id = value || `sprite_${extractorState.selectedIndex}`;
+      $('extractorSpriteId').value = sprite.id;
+      renderExtractorSpriteList();
+      updateExtractorUi();
+    });
+
+    $('extractorResetSpriteSizeBtn').addEventListener('click', () => {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      const centerX = sprite.offsetX + sprite.displayWidth / 2;
+      const bottomY = sprite.offsetY + sprite.displayHeight;
+      sprite.displayWidth = sprite.canvas.width;
+      sprite.displayHeight = sprite.canvas.height;
+      sprite.offsetX = Math.round(centerX - sprite.displayWidth / 2);
+      sprite.offsetY = Math.round(bottomY - sprite.displayHeight);
+      updateSelectedSpriteInputs();
+      renderExtractorEditor();
+      renderExtractorSpriteList();
+      updateExportStatus();
+    });
+
+    function deleteExtractorSpriteAt(index) {
+      if (index < 0 || index >= extractorState.detections.length) return;
+      extractorState.detections.splice(index, 1);
+      reindexSprites();
+      if (!extractorState.detections.length) {
+        extractorState.selectedIndex = -1;
+      } else if (extractorState.selectedIndex === index) {
+        extractorState.selectedIndex = Math.min(index, extractorState.detections.length - 1);
+      } else if (extractorState.selectedIndex > index) {
+        extractorState.selectedIndex--;
+      }
+      renderExtractorSpriteList();
+      redrawExtractorOverlay();
+      updateSelectedSpriteInputs();
+      updateExtractorUi();
+      updateExportStatus();
+      if (extractorState.selectedIndex < 0) setExtractorView('overview');
+      else renderExtractorEditor();
+      setGlobalStatus('Sprite Extractor', `${extractorState.detections.length} sprite(s) restant(s).`);
+    }
+
+    $('extractorDeleteSpriteBtn').addEventListener('click', () => {
+      deleteExtractorSpriteAt(extractorState.selectedIndex);
+    });
+
+    function reindexSprites() {
+      extractorState.detections.forEach((sprite, index) => { sprite.id = `sprite_${index}`; });
+    }
+
+    $('extractorCleanBtn').addEventListener('click', () => {
+      const minWidth = Math.max(1, intValue($('extractorCleanWidth'), 5));
+      const minHeight = Math.max(1, intValue($('extractorCleanHeight'), 5));
+      extractorState.detections = extractorState.detections.filter((sprite) => sprite.canvas.width >= minWidth && sprite.canvas.height >= minHeight);
+      reindexSprites();
+      extractorState.selectedIndex = extractorState.detections.length ? 0 : -1;
+      renderExtractorSpriteList();
+      redrawExtractorOverlay();
+      updateSelectedSpriteInputs();
+      updateExtractorUi();
+      if (extractorState.selectedIndex >= 0) renderExtractorEditor();
+      else setExtractorView('overview');
+      setGlobalStatus('Sprite Extractor', `Nettoyage terminé : ${extractorState.detections.length} sprite(s) conservé(s).`);
+    });
+
+    // ---------------------------------------------------------------------
+    // Extractor overview navigation and selection
+    // ---------------------------------------------------------------------
+    function updateExtractorOverviewTransform() {
+      if (extractorState.sourceReady) {
+        const bounded = constrainCanvasPan($('extractorOverviewViewport'), extractorSourceCanvas.width, extractorSourceCanvas.height, extractorState.overviewZoom, extractorState.overviewPanX, extractorState.overviewPanY);
+        extractorState.overviewPanX = bounded.x;
+        extractorState.overviewPanY = bounded.y;
+      }
+      $('extractorOverviewStage').style.transform = `translate(${extractorState.overviewPanX}px, ${extractorState.overviewPanY}px) scale(${extractorState.overviewZoom})`;
+      $('extractorZoomBadge').textContent = `${Math.round(extractorState.overviewZoom * 100)}%`;
+    }
+
+    function fitExtractorOverview() {
+      if (!extractorState.sourceReady) return;
+      const viewport = $('extractorOverviewViewport');
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+      if (!width || !height) return;
+      extractorState.overviewZoom = clamp(Math.min((width - 48) / extractorSourceCanvas.width, (height - 48) / extractorSourceCanvas.height), .05, 16);
+      extractorState.overviewPanX = Math.round((width - extractorSourceCanvas.width * extractorState.overviewZoom) / 2);
+      extractorState.overviewPanY = Math.round((height - extractorSourceCanvas.height * extractorState.overviewZoom) / 2);
+      updateExtractorOverviewTransform();
+    }
+
+    function zoomExtractorOverviewAt(clientX, clientY, nextZoom) {
+      if (!extractorState.sourceReady) return;
+      const rect = $('extractorOverviewViewport').getBoundingClientRect();
+      const localX = (clientX - rect.left - extractorState.overviewPanX) / extractorState.overviewZoom;
+      const localY = (clientY - rect.top - extractorState.overviewPanY) / extractorState.overviewZoom;
+      extractorState.overviewZoom = clamp(nextZoom, .05, 32);
+      extractorState.overviewPanX = clientX - rect.left - localX * extractorState.overviewZoom;
+      extractorState.overviewPanY = clientY - rect.top - localY * extractorState.overviewZoom;
+      updateExtractorOverviewTransform();
+    }
+
+    $('extractorOverviewViewport').addEventListener('wheel', (event) => {
+      event.preventDefault();
+      zoomExtractorOverviewAt(event.clientX, event.clientY, extractorState.overviewZoom * (event.deltaY < 0 ? 1.12 : .88));
+    }, { passive: false });
+
+    $('extractorOverviewViewport').addEventListener('pointerdown', (event) => {
+      if (!extractorState.sourceReady) return;
+      if (event.button === 1 || event.button === 2 || extractorState.spacePressed) {
+        event.preventDefault();
+        extractorState.overviewPanActive = true;
+        extractorState.overviewPanButton = event.button;
+        extractorState.overviewPanStartX = event.clientX - extractorState.overviewPanX;
+        extractorState.overviewPanStartY = event.clientY - extractorState.overviewPanY;
+        $('extractorOverviewViewport').setPointerCapture?.(event.pointerId);
+      }
+    });
+
+    $('extractorOverviewViewport').addEventListener('pointermove', (event) => {
+      if (!extractorState.overviewPanActive) return;
+      extractorState.overviewPanX = event.clientX - extractorState.overviewPanStartX;
+      extractorState.overviewPanY = event.clientY - extractorState.overviewPanStartY;
+      updateExtractorOverviewTransform();
+    });
+
+    $('extractorOverviewViewport').addEventListener('pointerup', (event) => {
+      if (extractorState.overviewPanActive) {
+        extractorState.overviewPanActive = false;
+        $('extractorOverviewViewport').releasePointerCapture?.(event.pointerId);
+        return;
+      }
+      if (event.button !== 0) return;
+      const rect = $('extractorOverviewViewport').getBoundingClientRect();
+      const x = (event.clientX - rect.left - extractorState.overviewPanX) / extractorState.overviewZoom;
+      const y = (event.clientY - rect.top - extractorState.overviewPanY) / extractorState.overviewZoom;
+      let selected = -1;
+      for (let index = extractorState.detections.length - 1; index >= 0; index--) {
+        const sprite = extractorState.detections[index];
+        if (x >= sprite.sourceX && x <= sprite.sourceX + sprite.sourceWidth && y >= sprite.sourceY && y <= sprite.sourceY + sprite.sourceHeight) {
+          selected = index;
+          break;
+        }
+      }
+      if (selected >= 0) selectExtractorSprite(selected, true);
+    });
+
+    $('extractorOverviewViewport').addEventListener('pointercancel', () => { extractorState.overviewPanActive = false; });
+    $('extractorOverviewViewport').addEventListener('contextmenu', (event) => event.preventDefault());
+
+    // ---------------------------------------------------------------------
+    // Extractor editor rendering and interaction
+    // ---------------------------------------------------------------------
+    function renderExtractorEditor() {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      extractorEditorCanvas.width = extractorState.cellWidth;
+      extractorEditorCanvas.height = extractorState.cellHeight;
+      extractorEditorCtx.clearRect(0, 0, extractorState.cellWidth, extractorState.cellHeight);
+      extractorEditorCtx.imageSmoothingEnabled = false;
+      extractorEditorCtx.drawImage(sprite.canvas, sprite.offsetX, sprite.offsetY, sprite.displayWidth, sprite.displayHeight);
+
+      extractorEditorCtx.save();
+      extractorEditorCtx.strokeStyle = 'rgba(93,168,255,.9)';
+      extractorEditorCtx.lineWidth = Math.max(1, 1 / Math.max(extractorState.editorZoom, .1));
+      extractorEditorCtx.setLineDash([]);
+      extractorEditorCtx.strokeRect(sprite.offsetX + .5, sprite.offsetY + .5, sprite.displayWidth - 1, sprite.displayHeight - 1);
+
+      const radius = 5 / Math.max(extractorState.editorZoom, .25);
+      extractorEditorCtx.beginPath();
+      extractorEditorCtx.arc(sprite.anchorX, sprite.anchorY, radius, 0, Math.PI * 2);
+      extractorEditorCtx.strokeStyle = '#ff6b78';
+      extractorEditorCtx.lineWidth = Math.max(1.5, 2 / Math.max(extractorState.editorZoom, .25));
+      extractorEditorCtx.stroke();
+      extractorEditorCtx.beginPath();
+      extractorEditorCtx.moveTo(sprite.anchorX - radius * 1.8, sprite.anchorY);
+      extractorEditorCtx.lineTo(sprite.anchorX + radius * 1.8, sprite.anchorY);
+      extractorEditorCtx.moveTo(sprite.anchorX, sprite.anchorY - radius * 1.8);
+      extractorEditorCtx.lineTo(sprite.anchorX, sprite.anchorY + radius * 1.8);
+      extractorEditorCtx.stroke();
+      extractorEditorCtx.restore();
+      updateExtractorEditorTransform();
+    }
+
+    function getExtractorEditorSafeBounds() {
+      const viewport = $('extractorEditorViewport');
+      const styles = getComputedStyle(viewport);
+      const cssInset = Number.parseFloat(styles.getPropertyValue('--editor-safe-inset'));
+      const inset = Number.isFinite(cssInset) ? Math.max(8, cssInset) : 20;
+      const width = Math.max(0, viewport.clientWidth);
+      const height = Math.max(0, viewport.clientHeight);
+      return {
+        viewport,
+        width,
+        height,
+        inset,
+        left: inset,
+        top: inset,
+        right: Math.max(inset, width - inset),
+        bottom: Math.max(inset, height - inset),
+        usableWidth: Math.max(1, width - inset * 2),
+        usableHeight: Math.max(1, height - inset * 2)
+      };
+    }
+
+    function constrainExtractorEditorPan(panX, panY, zoom = extractorState.editorZoom) {
+      const bounds = getExtractorEditorSafeBounds();
+      const scaledWidth = Math.max(1, extractorState.cellWidth * zoom);
+      const scaledHeight = Math.max(1, extractorState.cellHeight * zoom);
+
+      if (scaledWidth <= bounds.usableWidth) {
+        panX = bounds.left + (bounds.usableWidth - scaledWidth) / 2;
+      } else {
+        panX = clamp(panX, bounds.right - scaledWidth, bounds.left);
+      }
+
+      if (scaledHeight <= bounds.usableHeight) {
+        panY = bounds.top + (bounds.usableHeight - scaledHeight) / 2;
+      } else {
+        panY = clamp(panY, bounds.bottom - scaledHeight, bounds.top);
+      }
+
+      return { x: Math.round(panX), y: Math.round(panY) };
+    }
+
+    function updateExtractorEditorTransform() {
+      if (getSelectedSprite()) {
+        const bounded = constrainExtractorEditorPan(extractorState.editorPanX, extractorState.editorPanY);
+        extractorState.editorPanX = bounded.x;
+        extractorState.editorPanY = bounded.y;
+      }
+      $('extractorEditorStage').style.transform = `translate3d(${extractorState.editorPanX}px, ${extractorState.editorPanY}px, 0) scale(${extractorState.editorZoom})`;
+      $('extractorEditorZoomBadge').textContent = `${Math.round(extractorState.editorZoom * 100)}%`;
+    }
+
+    function fitExtractorEditor() {
+      if (!getSelectedSprite()) return;
+      const bounds = getExtractorEditorSafeBounds();
+      if (!bounds.width || !bounds.height) return;
+      const safeZoom = Math.min(
+        bounds.usableWidth / Math.max(1, extractorState.cellWidth),
+        bounds.usableHeight / Math.max(1, extractorState.cellHeight)
+      );
+      extractorState.editorZoom = clamp(safeZoom, .05, 24);
+      const scaledWidth = extractorState.cellWidth * extractorState.editorZoom;
+      const scaledHeight = extractorState.cellHeight * extractorState.editorZoom;
+      extractorState.editorPanX = Math.round(bounds.left + (bounds.usableWidth - scaledWidth) / 2);
+      extractorState.editorPanY = Math.round(bounds.top + (bounds.usableHeight - scaledHeight) / 2);
+      renderExtractorEditor();
+    }
+
+    function zoomExtractorEditorAt(clientX, clientY, nextZoom) {
+      const rect = $('extractorEditorViewport').getBoundingClientRect();
+      const localX = (clientX - rect.left - extractorState.editorPanX) / extractorState.editorZoom;
+      const localY = (clientY - rect.top - extractorState.editorPanY) / extractorState.editorZoom;
+      extractorState.editorZoom = clamp(nextZoom, .1, 32);
+      extractorState.editorPanX = clientX - rect.left - localX * extractorState.editorZoom;
+      extractorState.editorPanY = clientY - rect.top - localY * extractorState.editorZoom;
+      updateExtractorEditorTransform();
+      renderExtractorEditor();
+    }
+
+    function editorClientToCell(clientX, clientY) {
+      const rect = $('extractorEditorViewport').getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - extractorState.editorPanX) / extractorState.editorZoom,
+        y: (clientY - rect.top - extractorState.editorPanY) / extractorState.editorZoom
+      };
+    }
+
+    function getExtractorTool() {
+      return document.querySelector('input[name="extractorTool"]:checked')?.value || 'sprite';
+    }
+
+    function updateEraseUndoButton() {
+      const sprite = getSelectedSprite();
+      $('extractorUndoEraseBtn').disabled = !sprite || sprite.eraseUndo.length === 0;
+    }
+
+    function eraseSpriteLine(sprite, fromCell, toCell) {
+      const toNative = (point) => ({
+        x: (point.x - sprite.offsetX) * sprite.canvas.width / sprite.displayWidth,
+        y: (point.y - sprite.offsetY) * sprite.canvas.height / sprite.displayHeight
+      });
+      const from = toNative(fromCell);
+      const to = toNative(toCell);
+      const context = sprite.canvas.getContext('2d', { willReadFrequently: true });
+      context.save();
+      context.globalCompositeOperation = 'destination-out';
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      context.lineWidth = clamp(intValue($('extractorBrushSize'), 4), 1, 128);
+      context.beginPath();
+      context.moveTo(from.x, from.y);
+      context.lineTo(to.x, to.y);
+      context.stroke();
+      context.restore();
+    }
+
+    function applyBlackWhiteBrushLine(sprite, fromCell, toCell) {
+      const toNative = (point) => ({
+        x: (point.x - sprite.offsetX) * sprite.canvas.width / sprite.displayWidth,
+        y: (point.y - sprite.offsetY) * sprite.canvas.height / sprite.displayHeight
+      });
+      const from = toNative(fromCell);
+      const to = toNative(toCell);
+      const brushSize = clamp(intValue($('extractorBrushSize'), 4), 1, 128);
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = sprite.canvas.width;
+      maskCanvas.height = sprite.canvas.height;
+      const maskContext = maskCanvas.getContext('2d');
+      maskContext.lineCap = 'round';
+      maskContext.lineJoin = 'round';
+      maskContext.lineWidth = brushSize;
+      maskContext.strokeStyle = '#fff';
+      maskContext.beginPath();
+      maskContext.moveTo(from.x, from.y);
+      maskContext.lineTo(to.x, to.y);
+      maskContext.stroke();
+      if (Math.abs(from.x - to.x) < .01 && Math.abs(from.y - to.y) < .01) {
+        maskContext.beginPath();
+        maskContext.arc(from.x, from.y, brushSize / 2, 0, Math.PI * 2);
+        maskContext.fillStyle = '#fff';
+        maskContext.fill();
+      }
+
+      const context = sprite.canvas.getContext('2d', { willReadFrequently: true });
+      const imageData = context.getImageData(0, 0, sprite.canvas.width, sprite.canvas.height);
+      const maskData = maskContext.getImageData(0, 0, maskCanvas.width, maskCanvas.height).data;
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        if (maskData[i + 3] === 0 || data[i + 3] === 0) continue;
+        const gray = Math.round(.299 * data[i] + .587 * data[i + 1] + .114 * data[i + 2]);
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+      }
+      context.putImageData(imageData, 0, 0);
+    }
+
+    $('extractorEditorViewport').addEventListener('wheel', (event) => {
+      if (!getSelectedSprite()) return;
+      event.preventDefault();
+      zoomExtractorEditorAt(event.clientX, event.clientY, extractorState.editorZoom * (event.deltaY < 0 ? 1.12 : .88));
+    }, { passive: false });
+
+    $('extractorEditorViewport').addEventListener('pointerdown', (event) => {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      event.preventDefault();
+      $('extractorEditorViewport').setPointerCapture?.(event.pointerId);
+
+      if (event.button === 1 || event.button === 2 || extractorState.spacePressed) {
+        extractorState.editorPanActive = true;
+        extractorState.editorPanStartX = event.clientX - extractorState.editorPanX;
+        extractorState.editorPanStartY = event.clientY - extractorState.editorPanY;
+        return;
+      }
+
+      if (event.button !== 0) return;
+      extractorState.editorPointerActive = true;
+      const point = editorClientToCell(event.clientX, event.clientY);
+      extractorState.editorLastX = point.x;
+      extractorState.editorLastY = point.y;
+      extractorState.editorStartX = point.x;
+      extractorState.editorStartY = point.y;
+      extractorState.editorStartOffsetX = sprite.offsetX;
+      extractorState.editorStartOffsetY = sprite.offsetY;
+      extractorState.editorStartAnchorX = sprite.anchorX;
+      extractorState.editorStartAnchorY = sprite.anchorY;
+      const activeTool = getExtractorTool();
+      if (activeTool === 'erase' || activeTool === 'bwbrush') {
+        const context = sprite.canvas.getContext('2d', { willReadFrequently: true });
+        sprite.eraseUndo.push(context.getImageData(0, 0, sprite.canvas.width, sprite.canvas.height));
+        if (sprite.eraseUndo.length > 10) sprite.eraseUndo.shift();
+        extractorState.eraseStarted = true;
+        if (activeTool === 'erase') eraseSpriteLine(sprite, point, point);
+        else applyBlackWhiteBrushLine(sprite, point, point);
+        updateEraseUndoButton();
+        renderExtractorEditor();
+      }
+    });
+
+    $('extractorEditorViewport').addEventListener('pointermove', (event) => {
+      const sprite = getSelectedSprite();
+      if (!sprite) return;
+      if (extractorState.editorPanActive) {
+        extractorState.editorPanX = event.clientX - extractorState.editorPanStartX;
+        extractorState.editorPanY = event.clientY - extractorState.editorPanStartY;
+        updateExtractorEditorTransform();
+        return;
+      }
+      if (!extractorState.editorPointerActive) return;
+      const point = editorClientToCell(event.clientX, event.clientY);
+      const tool = getExtractorTool();
+      if (tool === 'sprite') {
+        sprite.offsetX = round(extractorState.editorStartOffsetX + point.x - extractorState.editorStartX);
+        sprite.offsetY = round(extractorState.editorStartOffsetY + point.y - extractorState.editorStartY);
+      } else if (tool === 'anchor') {
+        sprite.anchorX = round(extractorState.editorStartAnchorX + point.x - extractorState.editorStartX);
+        sprite.anchorY = round(extractorState.editorStartAnchorY + point.y - extractorState.editorStartY);
+      } else if (tool === 'erase') {
+        eraseSpriteLine(sprite, { x: extractorState.editorLastX, y: extractorState.editorLastY }, point);
+      } else if (tool === 'bwbrush') {
+        applyBlackWhiteBrushLine(sprite, { x: extractorState.editorLastX, y: extractorState.editorLastY }, point);
+      }
+      extractorState.editorLastX = point.x;
+      extractorState.editorLastY = point.y;
+      updateSelectedSpriteInputs();
+      renderExtractorEditor();
+      updateExportStatus();
+    });
+
+    function finishExtractorEditorPointer(event) {
+      extractorState.editorPointerActive = false;
+      extractorState.editorPanActive = false;
+      $('extractorEditorViewport').releasePointerCapture?.(event.pointerId);
+      if (extractorState.eraseStarted) {
+        extractorState.eraseStarted = false;
+        renderExtractorSpriteList();
+      }
+    }
+
+    $('extractorEditorViewport').addEventListener('pointerup', finishExtractorEditorPointer);
+    $('extractorEditorViewport').addEventListener('pointercancel', finishExtractorEditorPointer);
+    $('extractorEditorViewport').addEventListener('contextmenu', (event) => event.preventDefault());
+
+    $('extractorUndoEraseBtn').addEventListener('click', () => {
+      const sprite = getSelectedSprite();
+      if (!sprite || !sprite.eraseUndo.length) return;
+      const imageData = sprite.eraseUndo.pop();
+      const context = sprite.canvas.getContext('2d');
+      context.clearRect(0, 0, sprite.canvas.width, sprite.canvas.height);
+      context.putImageData(imageData, 0, 0);
+      updateEraseUndoButton();
+      renderExtractorEditor();
+      renderExtractorSpriteList();
+    });
+
+    // ---------------------------------------------------------------------
+    // Extractor toolbar buttons
+    // ---------------------------------------------------------------------
+    $('extractorFitBtn').addEventListener('click', () => extractorState.view === 'overview' ? fitExtractorOverview() : fitExtractorEditor());
+    $('extractorZoomInBtn').addEventListener('click', () => {
+      const viewport = extractorState.view === 'overview' ? $('extractorOverviewViewport') : $('extractorEditorViewport');
+      const rect = viewport.getBoundingClientRect();
+      if (extractorState.view === 'overview') zoomExtractorOverviewAt(rect.left + rect.width / 2, rect.top + rect.height / 2, extractorState.overviewZoom * 1.2);
+      else zoomExtractorEditorAt(rect.left + rect.width / 2, rect.top + rect.height / 2, extractorState.editorZoom * 1.2);
+    });
+    $('extractorZoomOutBtn').addEventListener('click', () => {
+      const viewport = extractorState.view === 'overview' ? $('extractorOverviewViewport') : $('extractorEditorViewport');
+      const rect = viewport.getBoundingClientRect();
+      if (extractorState.view === 'overview') zoomExtractorOverviewAt(rect.left + rect.width / 2, rect.top + rect.height / 2, extractorState.overviewZoom / 1.2);
+      else zoomExtractorEditorAt(rect.left + rect.width / 2, rect.top + rect.height / 2, extractorState.editorZoom / 1.2);
+    });
+
+    // ---------------------------------------------------------------------
+    // Export final spritesheet + JSON
+    // ---------------------------------------------------------------------
+    function getClippedSpriteCount() {
+      return extractorState.detections.filter((sprite) => sprite.offsetX < 0 || sprite.offsetY < 0
+        || sprite.offsetX + sprite.displayWidth > extractorState.cellWidth
+        || sprite.offsetY + sprite.displayHeight > extractorState.cellHeight).length;
+    }
+
+    function updateExportStatus() {
+      const count = extractorState.detections.length;
+      if (!count) {
+        $('extractorExportStatus').className = 'status-inline';
+        $('extractorExportStatus').textContent = 'Aucun sprite prêt à exporter.';
+        return;
+      }
+      const columns = Math.max(1, intValue($('extractorColumns'), 4));
+      const rows = Math.ceil(count / columns);
+      const clipped = getClippedSpriteCount();
+      $('extractorExportStatus').className = `status-inline ${clipped ? 'warn' : 'ok'}`;
+      $('extractorExportStatus').textContent = `${columns} colonne(s) × ${rows} ligne(s) · ${extractorState.cellWidth * columns} × ${extractorState.cellHeight * rows} px${clipped ? ` · Attention : ${clipped} sprite(s) débordent et seront coupés.` : ' · Aucun débordement.'}`;
+    }
+
+    $('extractorColumns').addEventListener('input', updateExportStatus);
+    $('extractorSheetName').addEventListener('input', updateExtractorUi);
+
+    function buildExtractorExportArtifacts() {
+      if (!extractorState.detections.length) return null;
+      const name = $('extractorSheetName').value.trim() || 'spritesheet';
+      const columns = Math.max(1, intValue($('extractorColumns'), 4));
+      const rows = Math.ceil(extractorState.detections.length / columns);
+      const sheet = document.createElement('canvas');
+      sheet.width = columns * extractorState.cellWidth;
+      sheet.height = rows * extractorState.cellHeight;
+      const context = sheet.getContext('2d');
+      context.clearRect(0, 0, sheet.width, sheet.height);
+      context.imageSmoothingEnabled = false;
+
+      const sprites = [];
+      extractorState.detections.forEach((sprite, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        const sheetX = column * extractorState.cellWidth;
+        const sheetY = row * extractorState.cellHeight;
+        context.save();
+        context.beginPath();
+        context.rect(sheetX, sheetY, extractorState.cellWidth, extractorState.cellHeight);
+        context.clip();
+        context.drawImage(sprite.canvas,
+          sheetX + sprite.offsetX, sheetY + sprite.offsetY,
+          sprite.displayWidth, sprite.displayHeight);
+        context.restore();
+        sprites.push({
+          id: sprite.id,
+          index,
+          sheetX,
+          sheetY,
+          w: extractorState.cellWidth,
+          h: extractorState.cellHeight,
+          spriteWidth: sprite.displayWidth,
+          spriteHeight: sprite.displayHeight,
+          sourceWidth: sprite.canvas.width,
+          sourceHeight: sprite.canvas.height,
+          offsetX: sprite.offsetX,
+          offsetY: sprite.offsetY,
+          anchorX: sprite.anchorX,
+          anchorY: sprite.anchorY
+        });
+      });
+
+      const manifest = {
+        id: $('extractorManifestId').value.trim() || 'sprites_manifest',
+        image: `${name}.png`,
+        cellWidth: extractorState.cellWidth,
+        cellHeight: extractorState.cellHeight,
+        columns,
+        rows,
+        sprites
+      };
+      return { name, sheet, manifest, json: JSON.stringify(manifest, null, 2) };
+    }
+
+    function downloadHref(href, filename) {
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function exportJsonOnly(artifacts = buildExtractorExportArtifacts()) {
+      if (!artifacts) return;
+      const jsonUrl = URL.createObjectURL(new Blob([artifacts.json], { type: 'application/json;charset=utf-8' }));
+      downloadHref(jsonUrl, `${artifacts.name}.json`);
+      setTimeout(() => URL.revokeObjectURL(jsonUrl), 2000);
+      setGlobalStatus('Sprite Extractor', `JSON exporté : ${artifacts.name}.json.`);
+    }
+
+    $('extractorExportBtn').addEventListener('click', () => {
+      const artifacts = buildExtractorExportArtifacts();
+      if (!artifacts) return;
+      const button = $('extractorExportBtn');
+      button.disabled = true;
+      try {
+        // Les deux clics restent dans le même geste utilisateur. Aucun setTimeout
+        // n'est utilisé entre le PNG et le JSON, ce qui évite le blocage du second fichier.
+        const pngDataUrl = artifacts.sheet.toDataURL('image/png');
+        const jsonDataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(artifacts.json)}`;
+        downloadHref(pngDataUrl, `${artifacts.name}.png`);
+        downloadHref(jsonDataUrl, `${artifacts.name}.json`);
+        setGlobalStatus('Sprite Extractor', `Export lancé : ${artifacts.name}.png + ${artifacts.name}.json.`);
+        $('extractorExportStatus').className = 'status-inline ok';
+        $('extractorExportStatus').textContent = 'Export terminé. Le bouton reste disponible pour réexporter autant de fois que nécessaire.';
+      } catch (error) {
+        console.error(error);
+        setGlobalStatus('Sprite Extractor', 'Erreur pendant l’export. Utilise « JSON seul » pour récupérer le manifeste séparément.');
+      } finally {
+        button.disabled = false;
+        updateExtractorUi();
+      }
+    });
+
+    $('extractorExportJsonBtn').addEventListener('click', () => exportJsonOnly());
+
+    function openJsonPreview() {
+      const artifacts = buildExtractorExportArtifacts();
+      if (!artifacts) return;
+      $('jsonPreviewContent').textContent = artifacts.json;
+      $('jsonPreviewModal').dataset.exportName = artifacts.name;
+      $('jsonPreviewModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      $('jsonPreviewCloseBtn').focus();
+    }
+
+    function closeJsonPreview() {
+      $('jsonPreviewModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    $('extractorPreviewJsonBtn').addEventListener('click', openJsonPreview);
+    $('jsonPreviewCloseBtn').addEventListener('click', closeJsonPreview);
+    $('jsonPreviewModal').addEventListener('click', (event) => {
+      if (event.target === $('jsonPreviewModal')) closeJsonPreview();
+    });
+    $('jsonPreviewDownloadBtn').addEventListener('click', () => {
+      const artifacts = buildExtractorExportArtifacts();
+      if (artifacts) exportJsonOnly(artifacts);
+    });
+    $('jsonPreviewCopyBtn').addEventListener('click', async () => {
+      const json = $('jsonPreviewContent').textContent;
+      try {
+        await navigator.clipboard.writeText(json);
+        $('jsonPreviewCopyBtn').textContent = 'JSON copié';
+        setTimeout(() => { $('jsonPreviewCopyBtn').textContent = 'Copier le JSON'; }, 1200);
+      } catch (error) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents($('jsonPreviewContent'));
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    });
+
+    // ---------------------------------------------------------------------
+    // Keyboard, fullscreen and resize
+    // ---------------------------------------------------------------------
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && $('jsonPreviewModal').classList.contains('open')) {
+        closeJsonPreview();
+        return;
+      }
+      if (event.code === 'Space' && !event.repeat) {
+        extractorState.spacePressed = true;
+        if (event.target === document.body) event.preventDefault();
+      }
+      const ctrl = event.ctrlKey || event.metaKey;
+      if (currentWorkflow === 'mask' && ctrl && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redoMask(); else undoMask();
+      } else if (currentWorkflow === 'mask' && ctrl && event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redoMask();
+      }
+    });
+
+    document.addEventListener('keyup', (event) => {
+      if (event.code === 'Space') extractorState.spacePressed = false;
+    });
+
+    $('btnFullscreen').addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      } catch (error) {
+        setGlobalStatus('Interface', 'Le plein écran n’est pas autorisé par ce navigateur.');
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      $('btnFullscreen').textContent = document.fullscreenElement ? 'Quitter plein écran' : 'Plein écran';
+      requestAnimationFrame(() => {
+        if (currentWorkflow === 'mask') fitMaskToViewport();
+        else if (extractorState.view === 'overview') fitExtractorOverview();
+        else fitExtractorEditor();
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      if (currentWorkflow === 'mask' && maskState.loadedImage) fitMaskToViewport();
+      if (currentWorkflow === 'extractor' && extractorState.sourceReady) {
+        if (extractorState.view === 'overview') fitExtractorOverview();
+        else fitExtractorEditor();
+      }
+    });
+
+    function isMobileLayout() {
+      return window.matchMedia('(max-width: 760px)').matches;
+    }
+
+    function updateMobilePanelToggle() {
+      const button = $('mobilePanelToggleBtn');
+      if (!button) return;
+      const open = document.body.classList.contains('mobile-inspector-open');
+      button.textContent = open ? 'Fermer panneau' : 'Panneau';
+    }
+
+    function setMobileInspectorOpen(force) {
+      const open = typeof force === 'boolean' ? force : !document.body.classList.contains('mobile-inspector-open');
+      if (!isMobileLayout()) {
+        document.body.classList.remove('mobile-inspector-open');
+        updateMobilePanelToggle();
+        return;
+      }
+      document.body.classList.toggle('mobile-inspector-open', open);
+      updateMobilePanelToggle();
+      const refit = () => {
+        if (currentWorkflow === 'mask' && maskState.loadedImage) fitMaskToViewport();
+        if (currentWorkflow === 'extractor' && extractorState.sourceReady) {
+          if (extractorState.view === 'overview') fitExtractorOverview();
+          else fitExtractorEditor();
+        }
+      };
+      requestAnimationFrame(refit);
+      setTimeout(refit, 260);
+    }
+
+    $('mobilePanelToggleBtn').addEventListener('click', () => setMobileInspectorOpen());
+
+    document.querySelectorAll('.inspector-head').forEach((head) => {
+      head.addEventListener('click', () => {
+        if (isMobileLayout()) setMobileInspectorOpen();
+      });
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!isMobileLayout() || !document.body.classList.contains('mobile-inspector-open')) return;
+      const activePage = currentWorkflow === 'mask' ? $('maskPage') : $('extractorPage');
+      const inspector = activePage.querySelector('.inspector');
+      const toggleBtn = $('mobilePanelToggleBtn');
+      if (inspector?.contains(event.target) || toggleBtn?.contains(event.target)) return;
+      setMobileInspectorOpen(false);
+    });
+
+    window.addEventListener('resize', () => {
+      if (!isMobileLayout()) document.body.classList.remove('mobile-inspector-open');
+      updateMobilePanelToggle();
+    });
+
+    const extractorLayoutObserver = new ResizeObserver(() => {
+      if (currentWorkflow !== 'extractor' || !extractorState.sourceReady) return;
+      requestAnimationFrame(() => {
+        if (extractorState.view === 'overview') {
+          const bounded = constrainCanvasPan(
+            $('extractorOverviewViewport'),
+            extractorSourceCanvas.width,
+            extractorSourceCanvas.height,
+            extractorState.overviewZoom,
+            extractorState.overviewPanX,
+            extractorState.overviewPanY
+          );
+          extractorState.overviewPanX = bounded.x;
+          extractorState.overviewPanY = bounded.y;
+          updateExtractorOverviewTransform();
+        } else {
+          const bounded = constrainExtractorEditorPan(extractorState.editorPanX, extractorState.editorPanY);
+          extractorState.editorPanX = bounded.x;
+          extractorState.editorPanY = bounded.y;
+          updateExtractorEditorTransform();
+        }
+      });
+    });
+    extractorLayoutObserver.observe($('extractorEditorViewport'));
+    extractorLayoutObserver.observe($('extractorOverviewViewport'));
+    extractorLayoutObserver.observe(document.querySelector('.extractor-main'));
+
+    // Initial UI
+    updateMaskLockUi();
+    updateMaskModeUi();
+    updateMaskUiAvailability();
+    updateMobilePanelToggle();
+    resetExtractorSource();
+  </script>
+</body>
+</html>

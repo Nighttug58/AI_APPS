@@ -1,0 +1,2036 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NightVenture — Générateur de prompts Sprite Sheets</title>
+  <style>
+    /* =========================================================
+       NIGHTVENTURE PROMPT FORGE — CSS autonome
+       ========================================================= */
+    :root {
+      color-scheme: dark;
+      --bg: #0c1017;
+      --bg-soft: #121824;
+      --panel: #171e2b;
+      --panel-2: #1d2635;
+      --panel-3: #222d3e;
+      --line: #344055;
+      --line-soft: #2a3447;
+      --text: #eef3fb;
+      --muted: #9caabd;
+      --accent: #75a9ff;
+      --accent-strong: #4b8bf4;
+      --accent-soft: rgba(117, 169, 255, 0.14);
+      --success: #71d59a;
+      --warning: #f2c66d;
+      --danger: #ff7b86;
+      --magenta: #ff00ff;
+      --green: #00ff00;
+      --shadow: 0 18px 52px rgba(0, 0, 0, 0.28);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(75, 139, 244, 0.12), transparent 34rem),
+        radial-gradient(circle at 95% 10%, rgba(151, 105, 255, 0.09), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button { color: inherit; }
+
+    .app-shell {
+      width: min(1540px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, rgba(29, 38, 53, 0.96), rgba(18, 24, 36, 0.96));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.45rem, 2.5vw, 2.3rem);
+      letter-spacing: -0.025em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 860px;
+      color: var(--muted);
+    }
+
+    .hero-badge {
+      flex: 0 0 auto;
+      padding: 9px 12px;
+      border: 1px solid rgba(117, 169, 255, 0.4);
+      border-radius: 999px;
+      color: #cfe0ff;
+      background: var(--accent-soft);
+      font-size: 0.86rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .main-tabs, .sub-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .main-tabs {
+      margin-bottom: 18px;
+      padding: 8px;
+      background: rgba(18, 24, 36, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .tab-btn, .subtab-btn {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 750;
+      transition: 0.18s ease;
+    }
+
+    .tab-btn {
+      flex: 1 1 220px;
+      padding: 12px 14px;
+    }
+
+    .subtab-btn {
+      flex: 1 1 140px;
+      padding: 10px 12px;
+    }
+
+    .tab-btn:hover, .subtab-btn:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .tab-btn.active, .subtab-btn.active {
+      color: white;
+      border-color: rgba(117, 169, 255, 0.42);
+      background: linear-gradient(180deg, rgba(117,169,255,0.22), rgba(75,139,244,0.12));
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(420px, 0.92fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .left-column, .right-column {
+      display: grid;
+      gap: 18px;
+    }
+
+    .right-column {
+      position: sticky;
+      top: 14px;
+    }
+
+    .panel {
+      background: rgba(23, 30, 43, 0.96);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 35px rgba(0,0,0,0.16);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(255,255,255,0.018);
+    }
+
+    .panel-header h2, .panel-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.01em;
+    }
+
+    .panel-body { padding: 18px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .form-grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    .field label, .field-label {
+      display: block;
+      margin-bottom: 7px;
+      color: #dbe5f4;
+      font-size: 0.83rem;
+      font-weight: 760;
+    }
+
+    .help {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.77rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #111722;
+      color: var(--text);
+      outline: none;
+      transition: 0.16s ease;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      height: 43px;
+      padding: 0 12px;
+    }
+
+    textarea {
+      min-height: 132px;
+      padding: 12px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(117, 169, 255, 0.13);
+    }
+
+    input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      margin: 0;
+      accent-color: var(--accent-strong);
+    }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .check-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 11px 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.018);
+      cursor: pointer;
+    }
+
+    .check-card:hover { border-color: #44516a; }
+
+    .check-card span {
+      font-size: 0.82rem;
+      line-height: 1.3;
+    }
+
+    .choice-zone {
+      margin-top: 15px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #121823;
+    }
+
+    .choice-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(255,255,255,0.018);
+      flex-wrap: wrap;
+    }
+
+    .choice-toolbar input {
+      flex: 1 1 220px;
+      height: 38px;
+    }
+
+    .mini-btn, .action-btn {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel-2);
+      cursor: pointer;
+      font-weight: 750;
+      transition: 0.16s ease;
+    }
+
+    .mini-btn {
+      padding: 8px 10px;
+      font-size: 0.78rem;
+    }
+
+    .mini-btn:hover, .action-btn:hover {
+      transform: translateY(-1px);
+      border-color: #52617d;
+      background: var(--panel-3);
+    }
+
+    .choice-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      max-height: 300px;
+      overflow: auto;
+      padding: 11px;
+    }
+
+    .choice-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: rgba(255,255,255,0.025);
+      cursor: pointer;
+      min-width: 0;
+    }
+
+    .choice-item:hover {
+      border-color: var(--line);
+      background: rgba(255,255,255,0.045);
+    }
+
+    .choice-item span {
+      min-width: 0;
+      font-size: 0.8rem;
+      overflow-wrap: anywhere;
+    }
+
+    .choice-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 12px;
+      border-top: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .sub-config {
+      display: none;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line-soft);
+    }
+    .sub-config.active { display: block; }
+
+    .counter-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .counter {
+      display: grid;
+      place-items: center;
+      width: 92px;
+      height: 92px;
+      border-radius: 18px;
+      border: 1px solid rgba(117,169,255,0.42);
+      background: linear-gradient(145deg, rgba(117,169,255,0.18), rgba(75,139,244,0.06));
+    }
+
+    .counter strong {
+      display: block;
+      text-align: center;
+      font-size: 1.9rem;
+      line-height: 1;
+    }
+
+    .counter small {
+      display: block;
+      margin-top: 5px;
+      color: #c9d8ef;
+      font-size: 0.67rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .grid-meta {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .grid-meta strong { color: var(--text); }
+
+    .grid-preview-wrap {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line-soft);
+      background: #0e141d;
+    }
+
+    .grid-preview {
+      display: grid;
+      width: min(100%, 470px);
+      margin: 0 auto;
+      gap: 3px;
+      aspect-ratio: var(--preview-ratio, 1 / 1);
+    }
+
+    .grid-cell {
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 2px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012));
+    }
+
+    .mask-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 11px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .mask-swatch {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      border: 2px solid rgba(255,255,255,0.72);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+    }
+
+    .mask-copy strong { display: block; font-size: 0.83rem; }
+    .mask-copy span { color: var(--muted); font-size: 0.76rem; }
+
+    .warnings {
+      display: grid;
+      gap: 8px;
+    }
+
+    .warning-item {
+      padding: 10px 11px;
+      border-radius: 10px;
+      border: 1px solid var(--line-soft);
+      font-size: 0.8rem;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .warning-item.info {
+      border-color: rgba(117,169,255,0.35);
+      color: #cfe0ff;
+      background: rgba(117,169,255,0.08);
+    }
+
+    .warning-item.warn {
+      border-color: rgba(242,198,109,0.42);
+      color: #ffe4a8;
+      background: rgba(242,198,109,0.08);
+    }
+
+    .warning-item.error {
+      border-color: rgba(255,123,134,0.45);
+      color: #ffc3c8;
+      background: rgba(255,123,134,0.08);
+    }
+
+    .warning-item.ok {
+      border-color: rgba(113,213,154,0.35);
+      color: #c7f7d9;
+      background: rgba(113,213,154,0.07);
+    }
+
+    .output-block + .output-block { margin-top: 15px; }
+
+    .output-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+
+    .output-head label {
+      font-weight: 800;
+      font-size: 0.86rem;
+    }
+
+    .output-head .char-count {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .prompt-output {
+      min-height: 310px;
+      background: #0d131c;
+    }
+
+    .negative-output {
+      min-height: 180px;
+      background: #11151e;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 0.8fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .action-btn {
+      min-height: 45px;
+      padding: 10px 14px;
+    }
+
+    .action-btn.primary {
+      border-color: rgba(117,169,255,0.55);
+      background: linear-gradient(180deg, #4f91fb, #377be8);
+      color: white;
+    }
+
+    .action-btn.primary:hover { background: linear-gradient(180deg, #63a0ff, #4387f1); }
+
+    .action-btn.danger {
+      border-color: rgba(255,123,134,0.32);
+      color: #ffc5ca;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 50;
+      max-width: min(420px, calc(100vw - 36px));
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #202a39;
+      color: white;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(14px);
+      pointer-events: none;
+      transition: 0.22s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hidden { display: none !important; }
+
+    .footnote {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 1fr; }
+      .right-column { position: static; }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell { width: min(100% - 18px, 1540px); padding-top: 10px; }
+      .hero { padding: 18px; flex-direction: column; }
+      .hero-badge { white-space: normal; }
+      .form-grid, .form-grid.three, .toggle-grid { grid-template-columns: 1fr; }
+      .choice-list { grid-template-columns: 1fr; max-height: 350px; }
+      .actions { grid-template-columns: 1fr; }
+      .panel-body { padding: 14px; }
+      .counter-card { grid-template-columns: 1fr; }
+      .counter { width: 100%; height: 72px; grid-auto-flow: column; justify-content: center; gap: 8px; }
+      .counter small { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div>
+        <h1>NightVenture — Prompt Forge</h1>
+        <p>Générateur autonome de prompts pour sprite sheets Pixel Art médiéval-fantastiques, avec perspective isométrique 3/4 de face, contrôle du masque et cohérence automatique.</p>
+      </div>
+      <div class="hero-badge">HTML autonome · Aucun serveur</div>
+    </header>
+
+    <nav class="main-tabs" aria-label="Catégories principales">
+      <button class="tab-btn active" data-tab="props">Small Object Props</button>
+      <button class="tab-btn" data-tab="places">Villes, villages et structures</button>
+      <button class="tab-btn" data-tab="tiles">Tilesets</button>
+    </nav>
+
+    <main class="workspace">
+      <section class="left-column">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>1. Contenu de la sprite sheet</h2>
+          </div>
+          <div class="panel-body">
+            <!-- ONGLET PROPS -->
+            <div class="tab-panel active" id="tab-props">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="propsBiome">Biome</label>
+                  <select id="propsBiome"></select>
+                </div>
+                <div class="field">
+                  <label for="propsCategory">Catégorie de props</label>
+                  <select id="propsCategory"></select>
+                </div>
+                <div class="field full">
+                  <label for="propsIntent">Intention complémentaire facultative</label>
+                  <input id="propsIntent" type="text" placeholder="Ex. végétation early-game, ressources rares, formes très compactes">
+                </div>
+              </div>
+              <div class="choice-zone" data-choice-zone="props">
+                <div class="choice-toolbar">
+                  <input type="text" data-search="props" placeholder="Filtrer les props…">
+                  <button class="mini-btn" data-choice-action="all" data-target="props">Tout sélectionner</button>
+                  <button class="mini-btn" data-choice-action="random" data-target="props">Sélection aléatoire</button>
+                  <button class="mini-btn" data-choice-action="none" data-target="props">Effacer</button>
+                </div>
+                <div class="choice-list" id="propsChoiceList"></div>
+                <div class="choice-footer">
+                  <span id="propsChoiceCount">0 sélection</span>
+                  <span>Listes dépendantes du biome</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ONGLET LIEUX -->
+            <div class="tab-panel" id="tab-places">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="placeType">Type de lieu</label>
+                  <select id="placeType"></select>
+                </div>
+                <div class="field">
+                  <label for="placeContent">Nature des éléments</label>
+                  <select id="placeContent">
+                    <option value="buildings">Bâtiments et structures principales</option>
+                    <option value="secondary">Éléments secondaires</option>
+                    <option value="mixed">Assortiment bâtiments + éléments secondaires</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="buildingVariant">Variante architecturale</label>
+                  <select id="buildingVariant">
+                    <option value="entiers">Bâtiments entiers / état selon options</option>
+                    <option value="ruines">Variantes en ruine</option>
+                    <option value="abandonnes">Variantes abandonnées</option>
+                    <option value="brules">Variantes brûlées</option>
+                    <option value="enneiges">Variantes enneigées</option>
+                    <option value="vegetation">Variantes envahies par la végétation</option>
+                    <option value="corrompus">Variantes corrompues</option>
+                    <option value="usure">Plusieurs niveaux d’usure</option>
+                    <option value="architecture">Plusieurs variantes architecturales</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="placeScale">Échelle de représentation</label>
+                  <select id="placeScale">
+                    <option value="structure_complete">Structure complète isolée</option>
+                    <option value="module">Module architectural assemblable</option>
+                    <option value="prop_structure">Petit élément de structure</option>
+                  </select>
+                </div>
+                <div class="field full">
+                  <label for="placeIntent">Intention complémentaire facultative</label>
+                  <input id="placeIntent" type="text" placeholder="Ex. architecture plus rustique, progression de niveau visible, toits blancs recolorables">
+                </div>
+              </div>
+              <div class="choice-zone" data-choice-zone="places">
+                <div class="choice-toolbar">
+                  <input type="text" data-search="places" placeholder="Filtrer les structures…">
+                  <button class="mini-btn" data-choice-action="all" data-target="places">Tout sélectionner</button>
+                  <button class="mini-btn" data-choice-action="random" data-target="places">Sélection aléatoire</button>
+                  <button class="mini-btn" data-choice-action="none" data-target="places">Effacer</button>
+                </div>
+                <div class="choice-list" id="placesChoiceList"></div>
+                <div class="choice-footer">
+                  <span id="placesChoiceCount">0 sélection</span>
+                  <span id="placeArchitecture">Architecture dépendante du lieu</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ONGLET TILESETS -->
+            <div class="tab-panel" id="tab-tiles">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="tilesBiome">Biome</label>
+                  <select id="tilesBiome"></select>
+                </div>
+                <div class="field">
+                  <label for="tilesIntent">Intention complémentaire facultative</label>
+                  <input id="tilesIntent" type="text" placeholder="Ex. transitions très lisibles, peu de détails répétitifs">
+                </div>
+              </div>
+
+              <div class="sub-tabs" style="margin-top:14px" aria-label="Types de tilesets">
+                <button class="subtab-btn active" data-subtab="grounds">Sols</button>
+                <button class="subtab-btn" data-subtab="paths">Chemins</button>
+                <button class="subtab-btn" data-subtab="liquids">Eaux et liquides</button>
+              </div>
+
+              <div class="sub-config active" id="sub-grounds">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="groundNeighbour">Sol voisin / transition facultative</label>
+                    <select id="groundNeighbour"></select>
+                  </div>
+                  <div class="field">
+                    <label for="groundComplexity">Complexité du raccord</label>
+                    <select id="groundComplexity">
+                      <option value="complete">Kit complet : centres, bords, coins et transitions</option>
+                      <option value="basic">Kit de base : centre, bords et coins</option>
+                      <option value="variations">Variantes visuelles de tuiles centrales</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sub-config" id="sub-paths">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="pathPlace">Lieu associé</label>
+                    <select id="pathPlace"></select>
+                  </div>
+                  <div class="field">
+                    <label for="pathGround">Sol environnant</label>
+                    <select id="pathGround"></select>
+                  </div>
+                  <div class="field">
+                    <label for="pathKit">Kit de raccords</label>
+                    <select id="pathKit">
+                      <option value="complete">Complet : droits, L, T, croix, extrémités</option>
+                      <option value="standard">Standard : droits, L, T et croix</option>
+                      <option value="minimal">Minimal : droits, virages et extrémités</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="pathDamage">Variantes de chemin</label>
+                    <select id="pathDamage">
+                      <option value="mix">Mélange propre + abîmé + détails naturels</option>
+                      <option value="clean">Principalement propre et régulier</option>
+                      <option value="damaged">Principalement abîmé et irrégulier</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sub-config" id="sub-liquids">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="liquidShore">Type de rive / transition</label>
+                    <select id="liquidShore">
+                      <option value="natural">Rive naturelle dépendante du biome</option>
+                      <option value="stone">Bord de pierre</option>
+                      <option value="mud">Bord boueux</option>
+                      <option value="sand">Bord sableux</option>
+                      <option value="none">Aucune rive, liquide seul</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="liquidMotion">Animation</label>
+                    <select id="liquidMotion">
+                      <option value="static">Tiles statiques</option>
+                      <option value="animable">Variantes animables cohérentes</option>
+                      <option value="calm_ripple">Calme + ondulations légères</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="choice-zone" data-choice-zone="tiles">
+                <div class="choice-toolbar">
+                  <input type="text" data-search="tiles" placeholder="Filtrer les matériaux…">
+                  <button class="mini-btn" data-choice-action="all" data-target="tiles">Tout sélectionner</button>
+                  <button class="mini-btn" data-choice-action="random" data-target="tiles">Sélection aléatoire</button>
+                  <button class="mini-btn" data-choice-action="none" data-target="tiles">Effacer</button>
+                </div>
+                <div class="choice-list" id="tilesChoiceList"></div>
+                <div class="choice-footer">
+                  <span id="tilesChoiceCount">0 sélection</span>
+                  <span id="tilesCompatibility">Compatibilité active</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>2. Configuration générale</h2>
+          </div>
+          <div class="panel-body">
+            <div class="form-grid three">
+              <div class="field">
+                <label for="columns">Colonnes</label>
+                <input id="columns" type="number" min="1" max="12" step="1" value="4">
+              </div>
+              <div class="field">
+                <label for="rows">Lignes</label>
+                <input id="rows" type="number" min="1" max="12" step="1" value="4">
+              </div>
+              <div class="field">
+                <label for="distributionMode">Type de répartition</label>
+                <select id="distributionMode">
+                  <option value="assortment">Assortiment cohérent automatique</option>
+                  <option value="different">Éléments différents sélectionnés</option>
+                  <option value="variants">Variantes d’un même élément</option>
+                  <option value="identical">Élément identique répété</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="resolutionWidth">Largeur totale (px)</label>
+                <input id="resolutionWidth" type="number" min="1" max="8192" step="64" value="1254">
+              </div>
+              <div class="field">
+                <label for="resolutionHeight">Hauteur totale (px)</label>
+                <input id="resolutionHeight" type="number" min="1" max="8192" step="64" value="1254">
+              </div>
+              <div class="field">
+                <label for="spriteSize">Taille apparente approximative</label>
+                <select id="spriteSize">
+                  <option value="petite">Petite, environ 45 à 55 % de la cellule</option>
+                  <option value="moyenne" selected>Moyenne, environ 60 à 70 % de la cellule</option>
+                  <option value="grande">Grande, environ 72 à 82 % de la cellule</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="maskMode">Fond de détourage</label>
+                <select id="maskMode">
+                  <option value="auto">Automatique, meilleur contraste</option>
+                  <option value="magenta">Magenta uni #FF00FF</option>
+                  <option value="green">Vert uni #00FF00</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="detailLevel">Niveau de détail</label>
+                <select id="detailLevel">
+                  <option value="faible">Faible</option>
+                  <option value="moyen" selected>Moyen</option>
+                  <option value="élevé">Élevé</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="stateOption">État</label>
+                <select id="stateOption">
+                  <option value="neuf">Neuf</option>
+                  <option value="utilisé" selected>Utilisé</option>
+                  <option value="abandonné">Abandonné</option>
+                  <option value="endommagé">Endommagé</option>
+                  <option value="en ruine">En ruine</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="moodOption">Ambiance</label>
+                <select id="moodOption">
+                  <option value="normale" selected>Normale</option>
+                  <option value="sombre">Sombre</option>
+                  <option value="magique">Magique</option>
+                  <option value="corrompue">Corrompue</option>
+                  <option value="enneigée">Enneigée</option>
+                  <option value="brûlée">Brûlée</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="language">Langue du prompt</label>
+                <select id="language" disabled>
+                  <option>Français</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="customElements">Ajouts personnalisés</label>
+                <input id="customElements" type="text" placeholder="Séparés par des virgules">
+              </div>
+            </div>
+
+            <div class="toggle-grid" style="margin-top:15px">
+              <label class="check-card"><input id="varyColor" type="checkbox" checked><span>Variations de couleur contrôlées</span></label>
+              <label class="check-card"><input id="varyShape" type="checkbox" checked><span>Variations de forme</span></label>
+              <label class="check-card"><input id="varyWear" type="checkbox" checked><span>Variations d’usure</span></label>
+              <label class="check-card"><input id="integratedShadow" type="checkbox"><span>Petite ombre intégrée au sprite</span></label>
+              <label class="check-card"><input id="pixelOutline" type="checkbox" checked><span>Bordure Pixel Art nette</span></label>
+              <label class="check-card"><input id="limitedPalette" type="checkbox" checked><span>Palette limitée et cohérente</span></label>
+              <label class="check-card"><input id="lockCoherence" type="checkbox" checked><span>Verrouiller la cohérence visuelle</span></label>
+              <label class="check-card"><input id="allowFantasy" type="checkbox"><span>Autoriser les combinaisons fantastiques</span></label>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <aside class="right-column">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Résumé de la grille</h2>
+          </div>
+          <div class="panel-body">
+            <div class="counter-card">
+              <div class="counter">
+                <strong id="spriteCount">16</strong>
+                <small>sprites</small>
+              </div>
+              <div class="grid-meta" id="gridMeta">
+                <strong>4 × 4</strong><br>
+                Résolution 1254 × 1254 px<br>
+                Cellule théorique 512 × 512 px
+              </div>
+            </div>
+            <div class="grid-preview-wrap">
+              <div class="grid-preview" id="gridPreview"></div>
+            </div>
+            <div class="mask-row">
+              <div class="mask-swatch" id="maskSwatch"></div>
+              <div class="mask-copy">
+                <strong id="maskTitle">Fond recommandé</strong>
+                <span id="maskDescription">Calcul automatique selon le contenu sélectionné.</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>Cohérence automatique</h2>
+          </div>
+          <div class="panel-body">
+            <div class="warnings" id="warnings"></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>3. Prompt final</h2>
+          </div>
+          <div class="panel-body">
+            <div class="output-block">
+              <div class="output-head">
+                <label for="promptOutput">Prompt principal</label>
+                <span class="char-count" id="promptCharCount">0 caractère</span>
+              </div>
+              <textarea class="prompt-output" id="promptOutput" readonly placeholder="Le prompt principal apparaîtra ici."></textarea>
+            </div>
+            <div class="output-block">
+              <div class="output-head">
+                <label for="negativeOutput">Negative prompt</label>
+                <span class="char-count" id="negativeCharCount">0 caractère</span>
+              </div>
+              <textarea class="negative-output" id="negativeOutput" readonly placeholder="Le negative prompt apparaîtra ici."></textarea>
+            </div>
+            <div class="actions">
+              <button class="action-btn primary" id="generateBtn">Générer le prompt</button>
+              <button class="action-btn" id="copyBtn">Copier le prompt</button>
+              <button class="action-btn danger" id="resetBtn">Réinitialiser</button>
+            </div>
+            <div class="footnote">Le bouton de copie regroupe le prompt principal et le negative prompt.</div>
+          </div>
+        </article>
+      </aside>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    /* =========================================================
+       1) DONNÉES MODIFIABLES
+       Ajouter un biome ou un lieu dans APP_DATA suffit pour
+       alimenter automatiquement les menus dépendants.
+       ========================================================= */
+    const APP_DATA = {"biomes":{"foret_temperee":{"label":"Forêt tempérée","colorBias":"green","climate":"temperate","fantasyLevel":"low","props":["buisson feuillu dense","fougère basse","souche moussue","champignons bruns","petit rocher moussu","branche tombée","tronc couché","touffe d’herbe forestière","plante médicinale verte","fleurs sauvages blanches","nid d’oiseau au sol","tas de feuilles mortes","racines apparentes","jeune pousse d’arbre","ronces compactes","gland et feuilles de chêne","petite pierre gravée","bois mort cassé","panier abandonné","petit autel naturel moussu"],"grounds":["herbe forestière courte","sol forestier brun","terre humide","mousse dense","feuilles mortes","terre avec racines","gravier forestier","herbe clairsemée","terre tassée","sol de sous-bois","mousse sur pierres","terre sombre organique","aiguilles et feuilles mélangées","petits cailloux moussus","terre fleurie discrète","zone piétinée","terre avec brindilles","herbe et mousse mêlées","sol argileux humide","terre couverte de glands"],"liquids":["eau claire de ruisseau","eau de rivière forestière","eau de petite mare","eau de lac calme","eau légèrement boueuse","source transparente","eau sombre sous les arbres","boue liquide"],"paths":["terre battue","terre humide","gravier fin","pierres naturelles","herbe écrasée","boue légère","dalles moussues","rondins rustiques"]},"foret_ancienne":{"label":"Forêt ancienne","colorBias":"green","climate":"temperate","fantasyLevel":"medium","props":["racines géantes noueuses","souche ancestrale creuse","fougère géante","champignons en cercle","pierre runique moussue","liane ancienne","buisson aux feuilles épaisses","branche torsadée","tronc couvert de lichens","plante médicinale rare","fleurs luminescentes discrètes","nid ancien abandonné","amas de feuilles épaisses","petit menhir forestier","cristal vert enfoui","écorce gravée","os d’animal moussu","gland géant","pousse d’arbre sacré","autel naturel de racines"],"grounds":["mousse ancienne épaisse","terre noire fertile","racines entrelacées","feuilles ancestrales","sol forestier profond","pierres couvertes de lichens","terre humide sombre","mousse fleurie","humus avec brindilles","dalles antiques envahies","terre avec spores","zone de racines géantes","feuilles dorées anciennes","sol de clairière sacrée","terre runique discrète","mousse bleu-vert","terre couverte d’écorce","sol humide avec champignons","gravier ancien moussu","terre de sanctuaire naturel"],"liquids":["eau de source ancestrale","eau claire magique","eau de rivière lente","mare sous racines","eau de lac sombre","eau légèrement luminescente","sève liquide fantastique","boue forestière profonde"],"paths":["terre ancienne tassée","racines aplaties","dalles antiques moussues","pierres naturelles larges","gravier sombre","terre avec feuilles","bois ancien","sentier rituel"]},"foret_maudite":{"label":"Forêt sombre et maudite","colorBias":"magenta","climate":"temperate","fantasyLevel":"high","props":["arbre mort miniature","ronces noires","champignon violet luminescent","crâne animal fissuré","racine corrompue","cristal d’ombre","buisson épineux sombre","fleurs fanées pourpres","souche suintante","os humains dispersés","pierre maudite gravée","liane nécrotique","flaque noire","branche crochue","œuf d’insecte étrange","petit totem occulte","herbe grisâtre","cendres froides","amas de plumes noires","autel de racines corrompues"],"grounds":["terre noire corrompue","mousse violette","feuilles mortes noires","sol fissuré sombre","racines nécrotiques","boue obscure","terre avec veines pourpres","cendres froides","sol forestier desséché","pierres maudites","terre suintante","mousse maladive","sol couvert d’ossements","terre rituelle","feuilles pourries","gravier noir","terre avec spores violettes","sol d’ombre","racines et brume basse","terre contaminée"],"liquids":["eau noire","eau corrompue","liquide nécrotique","eau empoisonnée violette","boue sombre","goudron fantastique","mare d’ombre","liquide magique pourpre"],"paths":["terre noire tassée","pierres maudites","boue obscure","racines écrasées","gravier noir","dalles occultes","cendres froides","sentier nécrotique"]},"foret_enneigee":{"label":"Forêt enneigée","colorBias":"green","climate":"cold","fantasyLevel":"low","props":["sapin enneigé miniature","buisson givré","souche couverte de neige","branche gelée","rocher enneigé","touffe d’herbe gelée","champignons d’hiver","tas de pommes de pin","petit tronc glacé","fougère givrée","baies rouges hivernales","nid sous la neige","cristal de glace","plante médicinale d’hiver","empreintes animales","tas de bois gelé","pierre couverte de givre","racines sous neige","petit bonhomme de pierre","autel naturel enneigé"],"grounds":["neige fraîche","neige tassée","sol forestier enneigé","glace fine","neige avec aiguilles de pin","terre gelée","mousse givrée","neige avec cailloux","neige souillée","glace forestière","neige profonde","terre sombre sous neige","neige poudreuse","plaques de givre","sol racineux gelé","neige avec branches","boue glacée","neige bleutée","gravier enneigé","feuilles gelées"],"liquids":["eau glacée","rivière froide","lac partiellement gelé","eau sombre hivernale","glace liquide fantastique","boue glacée","source chaude légère","eau sous couche de glace"],"paths":["neige tassée","terre gelée","pierres enneigées","glace rugueuse","gravier gelé","rondins givrés","boue glacée","dalles couvertes de neige"]},"plaine_verdoyante":{"label":"Plaine verdoyante","colorBias":"green","climate":"temperate","fantasyLevel":"low","props":["touffe d’herbe haute","buisson rond","petit rocher gris","fleurs jaunes","fleurs blanches","branche sèche","terrier animal","nid au sol","plante médicinale","pissenlits","petit arbuste","tas de foin","pierre plate","trèfle dense","herbe couchée par le vent","ossements d’animal","sac abandonné","borne de pierre","petite flaque claire","autel pastoral simple"],"grounds":["herbe courte","herbe haute","terre sèche","terre humide","herbe fleurie","sol de prairie","terre avec trèfles","herbe piétinée","gravier clair","terre argileuse","zone de foin coupé","herbe avec petites pierres","sol fertile sombre","terre poussiéreuse","herbe jaunie","mousse légère","sol de pâturage","terre avec racines fines","herbe venteuse","terre compacte"],"liquids":["eau claire","rivière de plaine","petit étang","eau de lac","mare légèrement boueuse","source","canal d’irrigation","boue liquide"],"paths":["terre battue","herbe écrasée","gravier clair","pierres plates","terre sèche","boue légère","dalles rustiques","piste de chariot"]},"prairie_fleurie":{"label":"Prairie fleurie","colorBias":"mixed","climate":"temperate","fantasyLevel":"low","props":["bouquet de fleurs rouges","bouquet de fleurs bleues","bouquet de fleurs jaunes","fleurs blanches sauvages","fleurs violettes","herbes fleuries","buisson fleuri","papillons groupés stylisés","pierre couverte de fleurs","petite ruche sauvage","nid dans l’herbe","plante médicinale fleurie","touffe de lavande","coquelicots","marguerites","fleurs magiques discrètes","panier de fleurs abandonné","couronne florale au sol","petit arbuste fleuri","autel naturel floral"],"grounds":["herbe fleurie multicolore","herbe courte verte","terre fleurie","prairie dense","herbe avec pétales","sol de clairière","herbe haute fleurie","terre humide avec fleurs","herbe jaune et verte","mousse fleurie","zone de trèfles","terre avec coquelicots","herbe piétinée fleurie","sol pastoral","herbe aux marguerites","terre avec lavande","prairie sèche fleurie","herbe avec petites pierres","sol fertile fleuri","pétales dispersés"],"liquids":["eau claire","ruisseau fleuri","petite mare","source scintillante","eau de lac calme","eau légèrement magique","canal naturel","eau avec pétales"],"paths":["herbe écrasée","terre claire","gravier fin","pierres fleuries","terre battue","dalles rustiques","piste douce","sentier de pétales"]},"marais":{"label":"Marais","colorBias":"green","climate":"wet","fantasyLevel":"low","props":["roseaux","nénuphars","souche humide","branche noyée","touffe d’herbe marécageuse","champignons humides","petit rocher couvert d’algues","racines aériennes","flaque boueuse","nid d’oiseau d’eau","plante médicinale humide","joncs","bois flotté","os d’animal","boue avec bulles","buisson détrempé","mousse spongieuse","petit piège abandonné","pierre envasée","autel de tourbe"],"grounds":["boue","sol marécageux","terre saturée d’eau","mousse humide","tourbe sombre","herbe détrempée","vase","terre avec roseaux","boue avec feuilles","sol spongieux","mousse sur boue","terre inondée","vase avec racines","boue claire","sol de rive","terre sombre humide","petits cailloux envasés","tourbe avec herbes","boue piétinée","sol humide avec algues"],"liquids":["eau marécageuse","eau boueuse","mare stagnante","eau sombre","boue liquide","eau verdâtre","petit chenal","eau avec nénuphars"],"paths":["planches humides","boue tassée","terre spongieuse","pierres envasées","rondins","gravier humide","sentier de tourbe","passerelle rustique"]},"marais_empoisonne":{"label":"Marécage empoisonné","colorBias":"magenta","climate":"wet","fantasyLevel":"high","props":["plante toxique violette","champignon luminescent","ossements blanchis","flaque contaminée","roseaux noirs","souche pourrie","cristal de poison","racine suintante","bulles toxiques","crâne fissuré","fleur carnivore","algues violettes","branche couverte de spores","petit totem empoisonné","herbe maladive","œufs d’insectes toxiques","pierre contaminée","sac d’alchimiste abandonné","champignons en grappe","autel toxique"],"grounds":["boue toxique","sol violet contaminé","tourbe empoisonnée","mousse maladive","terre avec spores","vase noire","sol fissuré verdâtre","boue luminescente","terre nécrosée","algues sur boue","sol avec veines toxiques","terre humide pourpre","boue avec ossements","sol corrompu humide","tourbe acide","terre suintante","vase avec bulles","mousse violette","terre noire empoisonnée","sol rituel toxique"],"liquids":["eau empoisonnée","acide vert","poison violet","eau corrompue","boue toxique","liquide nécrotique","mare luminescente","goudron toxique"],"paths":["planches contaminées","boue toxique tassée","pierres noires","tourbe compacte","rondins pourris","dalles alchimiques","sentier de spores","terre empoisonnée"]},"tourbiere_brumeuse":{"label":"Tourbière brumeuse","colorBias":"green","climate":"wet","fantasyLevel":"medium","props":["touffe de carex","mousse de tourbière","souche noyée","branche pâle","petit rocher humide","champignon brumeux","lanterne abandonnée","ossements d’animal","roseaux fins","flaque sombre","racines émergentes","herbe grise","amas de tourbe","plante médicinale rare","nid détrempé","pierre dressée","bois flotté","petit totem de brume","cristal opalin","autel de pierre humide"],"grounds":["tourbe sombre","mousse spongieuse","sol brumeux humide","boue froide","terre saturée","vase grise","herbe de tourbière","mousse pâle","tourbe avec eau","sol avec racines","terre noire humide","petites mares dispersées","tourbe piétinée","sol de bruyère humide","boue avec carex","terre brumeuse","mousse argentée","vase avec pierres","tourbe fissurée","sol d’ancien marais"],"liquids":["eau sombre brumeuse","eau stagnante","boue liquide","mare froide","eau grise","eau légèrement magique","chenal de tourbe","eau avec brouillard bas"],"paths":["planches vieillies","tourbe tassée","pierres humides","boue froide","rondins pâles","gravier sombre","sentier brumeux","dalles noyées"]},"montagne_rocheuse":{"label":"Montagne rocheuse","colorBias":"neutral","climate":"dry","fantasyLevel":"low","props":["rocher anguleux","amas de pierres","cristal de quartz","petit filon de fer","buisson montagnard","branche sèche","touffe d’herbe alpine","ossements de chèvre","pierre plate","éboulis miniature","racine résistante","fleur alpine","nid d’aigle au sol","pierre gravée","petit cairn","outil de mine abandonné","morceau de corde","bois cassé","géode ouverte","autel de montagne"],"grounds":["roche grise","gravier montagneux","terre pierreuse","éboulis","dalle rocheuse","sol alpin","pierre fissurée","terre sèche avec cailloux","roche sombre","gravier clair","sol de mine extérieur","pierre avec mousse rare","terre compacte","roche stratifiée","poussière minérale","sol d’altitude","pierres plates","terre ocre","roche avec quartz","gravier piétiné"],"liquids":["eau de source claire","ruisseau de montagne","eau de lac alpin","eau froide","boue minérale","eau ferrugineuse","petite cascade","eau de fonte"],"paths":["pierre brute","gravier montagneux","terre pierreuse","dalles rocheuses","éboulis tassé","escaliers de pierre","piste de mine","pierres plates"]},"montagne_enneigee":{"label":"Montagne enneigée","colorBias":"neutral","climate":"cold","fantasyLevel":"low","props":["rocher enneigé","cristal de glace","petit sapin givré","buisson alpin gelé","tas de pierres sous neige","branche glacée","touffe d’herbe gelée","filon minéral givré","ossements gelés","petit cairn enneigé","piquet de corde","lanterne éteinte","pierre runique glacée","empreintes dans la neige","géode gelée","sac de voyage abandonné","morceau de bois givré","fleur de givre","stalagmite de glace","autel de sommet enneigé"],"grounds":["neige sur roche","glace montagneuse","roche givrée","neige tassée","gravier enneigé","terre gelée","dalle de glace","neige profonde","roche noire sous neige","poudreuse","éboulis gelé","glace fissurée","neige avec quartz","sol alpin gelé","neige souillée","pierre bleu-gris","givre épais","chemin de neige compacte","roche avec congères","glace rugueuse"],"liquids":["eau glacée","lac gelé","eau de fonte","ruisseau sous glace","glace liquide magique","source chaude alpine","boue gelée","eau bleu pâle"],"paths":["neige tassée","pierre enneigée","glace rugueuse","gravier gelé","dalles de roche","escaliers givrés","piste de montagne","terre gelée"]},"region_volcanique":{"label":"Région volcanique","colorBias":"neutral","climate":"hot","fantasyLevel":"high","props":["roche noire","cristal de soufre","petite fissure de lave","tas de cendres","obsidienne brute","pierre rougeoyante","branche carbonisée","ossements calcinés","geyser miniature","scorie volcanique","cristal de feu","morceau de métal fondu","fleur de braise","champignon de cendre","chaîne abandonnée","crâne noirci","petit totem igné","fumée sortant d’une fissure","géode de magma","autel volcanique"],"grounds":["roche volcanique","cendres","basalte fissuré","sol noir brûlé","lave refroidie","obsidienne","terre rouge","scories","pierre avec veines de lave","cendres épaisses","roche brûlante","sol sulfuré","basalte rugueux","terre calcinée","poussière volcanique","dalle magmatique","roche noire brillante","fissures incandescentes","gravier de lave","sol de cratère"],"liquids":["lave","magma","lave sombre","magma bouillonnant","acide sulfurique fantastique","boue brûlante","liquide de feu magique","lave refroidissante"],"paths":["basalte tassé","cendres compactées","roche noire","dalles volcaniques","obsidienne rugueuse","gravier de lave","pierre ignée","sol calciné"]},"desert_chaud":{"label":"Désert chaud","colorBias":"neutral","climate":"hot","fantasyLevel":"low","props":["petit cactus","buisson sec","rocher de grès","crâne blanchi","branche desséchée","touffe d’herbe sèche","os dispersés","jarre cassée","morceau de tissu","pierre solaire","scorpion stylisé","nid dans le sable","plante médicinale désertique","cristal de sel","petite dune","sac de voyage abandonné","pieu de bois usé","débris de charrette","amphore ensablée","autel de pierre solaire"],"grounds":["sable fin","sable compacté","dune légère","terre sèche","grès","sable avec cailloux","sol craquelé","sable ocre","poussière désertique","gravier chaud","terre rouge sèche","sable avec traces","dalles ensablées","sol salin","sable sombre","terre dure","rochers plats","sable balayé par le vent","sol d’oasis sec","pierre chauffée"],"liquids":["eau d’oasis","eau claire rare","eau saumâtre","boue d’oasis","huile fantastique","eau magique scintillante","eau de citerne","liquide salin"],"paths":["sable compacté","terre sèche","pierres plates","gravier chaud","dalles ensablées","piste de chariot","grès tassé","sol craquelé"]},"desert_rocheux":{"label":"Désert rocheux","colorBias":"neutral","climate":"hot","fantasyLevel":"low","props":["rocher rouge","amas de pierres sèches","buisson épineux","crâne animal","cristal minéral","branche sèche","touffe d’herbe dure","géode ocre","pierre plate","petit cairn","jarre brisée","corde abandonnée","fossile","os long blanchi","piquet de camp","minerai de cuivre","pierre sculptée par le vent","débris de roue","sac déchiré","autel rocheux désertique"],"grounds":["roche rouge","gravier désertique","terre pierreuse sèche","grès fissuré","sol ocre","éboulis chaud","dalle rocheuse","poussière rouge","terre craquelée","pierres plates","roche stratifiée","gravier sombre","sol de canyon","terre compacte","pierre érodée","sable caillouteux","roche avec fossiles","sol minéral sec","terre rouge sombre","dalles naturelles"],"liquids":["eau de canyon","eau saumâtre","mare rare","boue minérale","source chaude","huile naturelle fantastique","eau de citerne","liquide salin"],"paths":["terre pierreuse","gravier rouge","dalles de grès","pierres plates","poussière compacte","piste de canyon","sol craquelé","roche érodée"]},"steppe_aride":{"label":"Steppe aride","colorBias":"green","climate":"dry","fantasyLevel":"low","props":["touffe d’herbe jaune","buisson sec","petit rocher beige","ossements d’animal","branche tordue","fleur résistante","nid au sol","pierre plate","terrier","plante médicinale sèche","tas de foin sauvage","poteau abandonné","morceau de selle","crâne de bovidé","petit cairn","sac de grain déchiré","herbe couchée","racine sèche","totem nomade simple","autel de steppe"],"grounds":["herbe sèche","terre jaune","sol poussiéreux","herbe clairsemée","terre craquelée","gravier fin","sol de steppe","terre compacte","herbe brune","poussière ocre","terre avec racines sèches","gravier clair","sol piétiné","herbe venteuse","terre rougeâtre","zone de foin","pierre plate","sol semi-aride","terre avec cailloux","herbe jaunie dense"],"liquids":["eau de rivière basse","petite mare","eau boueuse","source rare","boue sèche humide","eau saumâtre","abreuvoir naturel","eau claire de puits"],"paths":["terre battue","herbe écrasée","poussière compacte","gravier fin","piste de chariot","pierres plates","sol craquelé","terre ocre"]},"toundra":{"label":"Toundra","colorBias":"green","climate":"cold","fantasyLevel":"low","props":["lichen de toundra","buisson nain givré","petit rocher froid","touffe d’herbe rase","bois flotté blanchi","ossements de renne","cristal de glace","branche gelée","plante médicinale arctique","nid au sol","pierre plate givrée","champignon pâle","empreintes animales","petit cairn","mousse arctique","sac de fourrure abandonné","piquet de camp","corne cassée","racine gelée","autel de pierre polaire"],"grounds":["mousse de toundra","terre gelée","neige légère","lichen dense","sol froid pierreux","boue gelée","herbe rase","glace fine","terre sombre froide","gravier givré","pergélisol fissuré","neige sale","mousse humide froide","sol tourbeux gelé","pierres plates","terre avec lichens","givre","sol arctique sec","neige balayée","terre nue gelée"],"liquids":["eau glacée","mare de toundra","rivière froide","lac partiellement gelé","boue glacée","eau sombre","eau de fonte","glace liquide magique"],"paths":["terre gelée","mousse tassée","neige compacte","pierres givrés","gravier froid","planches rustiques","boue gelée","piste de toundra"]},"jungle":{"label":"Jungle","colorBias":"green","climate":"wet","fantasyLevel":"medium","props":["fougère tropicale","liane enroulée","buisson luxuriant","fleur exotique rouge","champignon tropical","racine aérienne","petit rocher humide","branche couverte de mousse","plante médicinale jungle","fruit tombé","nid exotique","feuilles géantes","souche humide","orchidée sauvage","petit cristal vert","ossements envahis","idole végétale","bambou cassé","flaque sous feuilles","autel naturel jungle"],"grounds":["sol de jungle humide","feuilles tropicales","boue chaude","mousse dense","terre rouge humide","racines entrelacées","herbe tropicale","sol avec pétales","terre noire fertile","pierres humides","humus épais","boue avec feuilles","sol de bambou","mousse sur racines","terre avec fruits tombés","gravier tropical","sol inondé léger","terre fleurie exotique","feuilles pourries","terre de clairière jungle"],"liquids":["eau tropicale","rivière de jungle","mare chaude","eau claire sous cascade","eau boueuse","eau verdâtre","boue liquide","eau magique turquoise"],"paths":["terre rouge tassée","boue tropicale","pierres humides","racines aplaties","planches de bambou","gravier sombre","sentier de feuilles","dalles envahies"]},"cote_maritime":{"label":"Côte maritime","colorBias":"neutral","climate":"wet","fantasyLevel":"low","props":["coquillages","algues échouées","bois flotté","petit rocher marin","touffe d’herbe côtière","cordage abandonné","caisse cassée","filet de pêche","crabe stylisé","ancre miniature rouillée","bouteille vide","os de poisson","morceau de voile","corail mort","galets","bouée en bois","panier de pêche","petit mât brisé","lanterne marine","autel de galets"],"grounds":["sable humide","sable sec","galets","roche côtière","algues sur sable","terre saline","gravier marin","sable avec coquillages","roche mouillée","sable compacté","dalles de quai","bois de ponton","vase côtière","herbe saline","sable sombre","rochers avec mousse marine","plage de galets","terre de falaise","sable avec débris","sol portuaire usé"],"liquids":["eau de mer","eau côtière claire","eau turquoise","eau sombre de port","eau avec écume","eau de marée","eau saumâtre","eau agitée animable"],"paths":["sable compacté","galets tassés","planches de quai","dalles de pierre","gravier marin","terre saline","pierres humides","promenade en bois"]},"ile_tropicale":{"label":"Île tropicale","colorBias":"green","climate":"hot","fantasyLevel":"medium","props":["petit palmier","buisson tropical","fleur exotique","noix de coco","coquillages colorés","rocher clair","bois flotté","corail","crabe stylisé","feuilles de palmier","fruit tropical","liane","petit totem insulaire","panier tressé","bouteille échouée","souche de palmier","plante médicinale tropicale","nid d’oiseau marin","cristal turquoise","autel de coquillages"],"grounds":["sable blanc","sable humide","herbe tropicale","terre insulaire","corail émietté","galets clairs","sol de palmeraie","sable avec coquillages","mousse tropicale","terre rouge","plage de corail","sable compacté","herbe fleurie tropicale","sol humide sous palmes","roche claire","terre avec fruits","sable doré","gravier côtier clair","feuilles tropicales","sol de lagon"],"liquids":["eau tropicale turquoise","eau de lagon","eau de mer claire","eau avec écume","source insulaire","eau peu profonde","eau magique azur","eau de marée calme"],"paths":["sable compacté","planches tropicales","pierres claires","terre insulaire","coquillages tassés","herbe écrasée","dalles de corail","gravier côtier"]},"terre_corrompue":{"label":"Terre corrompue ou démoniaque","colorBias":"magenta","climate":"hostile","fantasyLevel":"high","props":["cristal démoniaque violet","os calcinés","roche avec veines rouges","plante nécrotique","fissure d’énergie","crâne corrompu","branche noire","champignon infernal","chaîne brisée","petit portail éteint","œil organique stylisé","cendres pourpres","totem démoniaque","racine tentaculaire","fleur de sang","morceau d’armure maudite","pierre runique rouge","flaque nécrotique","géode d’ombre","autel démoniaque miniature"],"grounds":["terre corrompue","sol démoniaque","roche noire fissurée","veines rouges","cendres pourpres","terre nécrotique","dalle infernale","sol organique sombre","gravier noir","terre brûlée","cristaux enfouis","sol avec runes","boue de sang fantastique","roche d’ombre","terre suintante","cendre noire","sol violet fissuré","dalles maudites","terre avec ossements","sol de portail"],"liquids":["liquide nécrotique","sang fantastique","lave démoniaque","goudron d’ombre","poison violet","acide rouge","eau corrompue","liquide magique noir"],"paths":["dalles démoniaques","terre noire tassée","roche fissurée","cendres pourpres","gravier noir","os compactés stylisés","sol runique","pierre infernale"]}},"places":{"village_paysan":{"label":"Village paysan","architecture":"bois, torchis, pierre locale et chaume","buildings":["maison paysanne","ferme familiale","grange","étable","porcherie","poulailler","moulin à vent","moulin à eau","petite forge","auberge rurale","four à pain communal","entrepôt de récoltes","maison du chef du village","chapelle rustique","atelier de charpentier","atelier de potier","bergerie","hangar à outils","petit marché couvert","pont rural en bois"],"secondary":["tonneaux","caisses de récolte","charrette à foin","sacs de grain","puits en pierre","clôture en bois","tas de bois","meule de foin","abreuvoir","brouette","outils agricoles","épouvantail","paniers","banc rustique","cordages","panneau directionnel","barrière","auge","tas de fumier stylisé","petit feu extérieur"],"paths":["terre battue","gravier clair","herbe piétinée","piste de chariot","pierres rustiques","boue légère"],"traits":["rural","wood"],"colorBias":"neutral"},"village_forestier":{"label":"Village forestier","architecture":"bois sombre, pierre moussue, toits de bardeaux et intégration aux arbres","buildings":["cabane de bûcheron","maison forestière","scierie","atelier de charpentier","petite forge","auberge du sous-bois","entrepôt de bois","maison du garde forestier","pavillon de chasse","fumoir","herboristerie","sanctuaire forestier","moulin à eau forestier","pont couvert","grange à bois","poste de guet en bois","refuge de trappeur","atelier de vannier","marché du bois","maison commune forestière"],"secondary":["tas de bûches","souches coupées","charrette de bois","caisses","tonneaux","râtelier de haches","cordages","piles de planches","lanternes suspendues","puits moussu","panneaux en bois","clôtures rustiques","pièges de chasse","bancs en rondins","fagots","paniers de champignons","séchoir à herbes","feu de camp","outils de coupe","petit autel végétal"],"paths":["terre forestière","planches de bois","gravier sombre","dalles moussues","racines tassées","boue légère"],"traits":["forest","wood"],"colorBias":"green"},"village_montagne":{"label":"Village de montagne","architecture":"pierre robuste, bois épais, toits pentus et fondations sur roche","buildings":["maison montagnarde","chalet fortifié","forge de montagne","auberge du col","entrepôt minier","atelier de tailleur de pierre","petite mine d’entrée","tour de guet","écurie robuste","grange de pente","moulin à eau de montagne","chapelle du sommet","maison du contremaître","atelier de cordier","pont de pierre","refuge de voyageurs","caserne locale","marché couvert en pierre","four à chaux","maison commune"],"secondary":["caisses de minerai","tonneaux cerclés","chariot minier","cordages","poutres","outils de mine","brasero","lanterne de mine","tas de pierres","râtelier de pioches","sacs de charbon","banc de pierre","panneau du col","barrière robuste","treuil","échelle","auge","tas de bois","petit cairn","cloche d’alerte"],"paths":["pierre brute","gravier montagneux","dalles de pierre","terre pierreuse","escaliers de roche","piste minière"],"traits":["mountain","stone"],"colorBias":"neutral"},"village_enneige":{"label":"Village enneigé","architecture":"bois épais, pierre, toits très pentus et détails couverts de neige","buildings":["maison enneigée","chalet de chasse","auberge hivernale","forge couverte","entrepôt à provisions","fumoir","écurie fermée","grange enneigée","scierie hivernale","chapelle de glace et bois","tour de guet givrée","maison du chef","refuge de voyageurs","atelier de fourrures","moulin gelé","pont couvert enneigé","maison de guérisseur","caserne locale","hangar à traîneaux","marché hivernal couvert"],"secondary":["traîneau","caisses enneigées","tonneaux givrés","tas de bois","brasero","lanternes chaudes","poteaux de corde","râtelier de skis rustiques","peaux suspendues","puits couvert","banc enneigé","panneau gelé","clôture sous neige","sacs de provisions","outils hivernaux","pile de bûches","abreuvoir gelé","petit feu","bonhomme de neige rustique","cloche d’alerte"],"paths":["neige tassée","bois enneigé","pierre givrée","gravier gelé","terre gelée","dalles sous neige"],"traits":["cold","wood"],"colorBias":"neutral"},"village_cotier":{"label":"Village côtier","architecture":"bois salin, pierre claire, toits de bardeaux et structures maritimes","buildings":["maison de pêcheur","cabane de filets","auberge du port","fumoir à poissons","entrepôt maritime","petit chantier naval","atelier de voilier","forge portuaire","phare côtier","chapelle des marins","marché aux poissons","jetée en bois","maison du capitaine","hangar à barques","tour de guet côtière","moulin à marée","maison commune","atelier de cordier","petit fort côtier","pontons couverts"],"secondary":["filets de pêche","tonneaux","caisses de poissons","cordages","ancres","barques","paniers","bouées en bois","lanternes marines","étal de poisson","rames","voiles roulées","pieux de quai","casiers à crustacés","banc de quai","tas de bois flotté","panneau du port","chaînes","seaux","petit brasero"],"paths":["planches de quai","galets tassés","sable compacté","dalles humides","gravier marin","terre saline"],"traits":["coastal","wood"],"colorBias":"neutral"},"ville_fortifiee":{"label":"Ville médiévale fortifiée","architecture":"pierre massive, remparts, toits d’ardoise et architecture défensive","buildings":["maison urbaine en pierre","auberge fortifiée","grande forge","marché couvert","entrepôt urbain","tour de garde","caserne","écurie municipale","porte fortifiée","segment de rempart","tour d’angle","armurerie","maison de guilde","chapelle urbaine","prison","poste de péage","atelier d’artisan","boulangerie","maison du prévôt","pont-levis"],"secondary":["tonneaux","caisses","charrette","sacs","étals de marché","puits urbain","lampadaire médiéval","panneaux","bannières","barrières","bancs","braseros","râteliers d’armes","cages","cordages","tables de marchand","outils","tas de bois","bornes de pierre","boucliers décoratifs"],"paths":["pavés","dalles de pierre","gravier compacté","pierre usée","voie militaire","pavés boueux"],"traits":["city","stone"],"colorBias":"neutral"},"cite_royale":{"label":"Grande cité royale","architecture":"pierre taillée raffinée, marbre, toits nobles et ornements héraldiques","buildings":["palais royal","manoir noble","maison bourgeoise","grande auberge","hôtel de guilde","banque royale","grand marché couvert","cathédrale","caserne royale","armurerie royale","grande écurie","tour de garde monumentale","porte cérémonielle","bibliothèque","tribunal","maison des monnaies","atelier d’orfèvre","entrepôt royal","pont monumental","bains publics médiévaux"],"secondary":["fontaine","bannières royales","lampadaires ouvragés","statues","bancs de pierre","étals raffinés","charrette noble","caisses marquées","tonneaux propres","gardes décoratifs absents du sprite","braseros dorés","bornes sculptées","panneaux de quartier","jardinières","cordons de cérémonie","râteliers d’armes","kiosque","horloge solaire","balustrades","caisses de tribut"],"paths":["pavés réguliers","dalles de marbre","pierre claire","voie cérémonielle","pavés polis","gravier de jardin"],"traits":["royal","stone"],"colorBias":"neutral"},"quartier_pauvre":{"label":"Quartier pauvre","architecture":"bois récupéré, torchis fissuré, pierre sale et constructions serrées","buildings":["maison délabrée","cabane urbaine","auberge miteuse","atelier improvisé","entrepôt abandonné","petite forge usée","refuge collectif","maison effondrée","échoppe de récupération","taverne basse","buanderie commune","abri sous rempart","atelier de cordonnier","four communal fissuré","petite chapelle pauvre","maison sur pilotis","hangar de chiffonnier","cour couverte","poste de garde délabré","pont de planches"],"secondary":["caisses cassées","tonneaux fuyants","charrette brisée","sacs rapiécés","linge suspendu","brasero rouillé","banc cassé","tas de déchets stylisé","cordages","planches","panneau tordu","seau","cage vide","outils usés","tas de bois humide","étal pauvre","barrière improvisée","lampion faible","débris de mur","flaque boueuse"],"paths":["terre boueuse","pavés cassés","planches usées","gravier sale","terre battue","dalles irrégulières"],"traits":["poor","mixed"],"colorBias":"neutral"},"quartier_marchand":{"label":"Quartier marchand","architecture":"maisons à colombages, pierre, auvents colorés et espaces commerciaux","buildings":["grand marché couvert","maison de marchand","auberge commerçante","entrepôt de guilde","comptoir de change","atelier de tisserand","atelier de potier","forge commerciale","boulangerie","boucherie","herboristerie","orfèvrerie","maison des caravanes","écurie de relais","hall des enchères","boutique d’armures","librairie médiévale","atelier de verrier","maison de guilde","poste de taxe"],"secondary":["étals de marché","caisses","tonneaux","sacs d’épices","chariots","enseignes","bannières de guilde","balances","paniers","tables","auvents","lampadaires","cordages","présentoirs","cages à volailles vides","braseros","bancs","panneaux de prix sans texte","tas de tissus","amphores"],"paths":["pavés marchands","dalles de pierre","gravier compacté","pavés colorés sobres","voie de chariot","pierre usée"],"traits":["market","city"],"colorBias":"neutral"},"camp_militaire":{"label":"Campement militaire","architecture":"tentes disciplinées, bois défensif, toile robuste et organisation régulière","buildings":["tente de commandement","tente de soldats","tente médicale","armurerie de campagne","forge mobile","cuisine de camp","entrepôt de provisions","écurie temporaire","tour de guet en bois","palissade","porte de camp","baraquement","chapelle de campagne","atelier de réparation","prison de campagne","poste de messager","abri d’archers","hangar à chariots","latrines fermées stylisées","pont militaire"],"secondary":["feux de camp","râteliers d’armes","caisses","tonneaux","sacs","bannières militaires","boucliers empilés","piques plantées","chariots","cordages","tables tactiques sans carte lisible","braseros","poteaux","barrières","cages","outils","tas de bois","cibles d’entraînement","lanternes","seaux"],"paths":["terre battue","boue","planches","gravier compacté","herbe piétinée","piste de chariot"],"traits":["camp","military"],"colorBias":"neutral"},"camp_bandits":{"label":"Campement de bandits","architecture":"tentes disparates, bois volé, structures improvisées et aspect désordonné","buildings":["tente de chef bandit","tente rapiécée","cabane improvisée","tour de guet branlante","palissade irrégulière","porte barricadée","cage de prisonnier vide","entrepôt de butin","forge rudimentaire","cuisine de camp","abri de guetteur","cache souterraine d’entrée","atelier de pièges","étable volée","hangar de chariot","cabane de contrebandier","pont de fortune","refuge dans rocher","tente de soins volée","autel superstitieux"],"secondary":["feux de camp","caisses de butin","tonneaux","sacs volés","râteliers d’armes","cages","cordages","tables bancales","chariots cassés","bannières déchirées","pièges","tas de bois","lanternes volées","boucliers disparates","outils","bancs improvisés","ossements","bouteilles vides","panneau menaçant sans texte","brasero"],"paths":["terre sale","boue","planches irrégulières","herbe piétinée","gravier sombre","piste cachée"],"traits":["camp","bandit"],"colorBias":"neutral"},"camp_nomade":{"label":"Campement nomade","architecture":"tentes textiles, bois léger, structures démontables et motifs tribaux","buildings":["grande yourte","tente familiale","tente du chef","tente de chaman","abri de cuisine","enclos démontable","écurie légère","tente de commerce","atelier de tissage","atelier de cuir","sanctuaire nomade","tente de guérisseur","abri à provisions","poste de guet léger","tente de voyageurs","abri de chasse","tente de messager","hangar démontable","pont de cordes","cercle cérémoniel couvert"],"secondary":["feux de camp","tapis","caisses légères","sacs","outres","cordages","poteaux sculptés","bannières textiles","paniers","selles","râteliers d’arcs","tables basses","lanternes","peaux suspendues","enclos","chariots nomades","tambours sans symbole lisible","tas de bois","braseros","totems"],"paths":["terre tassée","herbe piétinée","sable compacté","gravier fin","tapis de sol extérieurs","piste de chariot"],"traits":["camp","nomad"],"colorBias":"neutral"},"camp_chasseurs":{"label":"Campement de chasseurs","architecture":"bois brut, peaux, petites tentes et structures discrètes","buildings":["cabane de chasse","tente de trappeur","pavillon de chasse rustique","fumoir","atelier de tannage","abri à provisions","tour d’observation","chenil fermé","petite écurie","cabane de guérisseur","atelier d’archerie","refuge de montagne","entrepôt de peaux","cuisine de camp","abri de guetteur","hangar à pièges","pont de rondins","poste de garde forestier","tente de chef","sanctuaire de chasse"],"secondary":["feux de camp","râteliers d’arcs","pièges","peaux suspendues","caisses","tonneaux","cordages","sacs","tables de découpe propres","paniers","lanternes","tas de bois","cibles","pieux","filets","bancs en rondins","outils de chasse","cornes","panneaux forestiers","séchoirs"],"paths":["terre forestière","herbe piétinée","planches rustiques","gravier","boue légère","rondins"],"traits":["camp","forest"],"colorBias":"green"},"ruines_antiques":{"label":"Ruines antiques","architecture":"pierre ancienne monumentale, colonnes, arcs et maçonnerie effondrée","buildings":["temple antique en ruine","tour antique brisée","arc monumental effondré","maison antique ruinée","bibliothèque effondrée","thermes en ruine","amphithéâtre fragmentaire","mausolée antique","sanctuaire détruit","porte antique brisée","pont antique effondré","aqueduc fragmentaire","fort antique ruiné","palais ancien effondré","atelier antique abandonné","entrepôt antique ruiné","tour de signal brisée","cryptes d’entrée","mur cyclopéen fragmentaire","autel monumental endommagé"],"secondary":["colonnes brisées","chapiteaux","gravats","statues endommagées","fragments de murs","dalles fissurées","urnes cassées","braseros éteints","blocs sculptés","mosaïques fragmentaires sans texte","racines envahissantes","lianes","tas de pierres","arches isolées","socles vides","chaînes rouillées","sarcophages fermés","débris de toit","petits obélisques","pierre runique illisible"],"paths":["dalles antiques fissurées","gravier de ruines","pierre envahie","terre poussiéreuse","mosaïque brisée","escaliers effondrés"],"traits":["ruins","stone"],"colorBias":"neutral"},"ruines_elfiques":{"label":"Ruines elfiques","architecture":"pierre claire élancée, arcs organiques, motifs végétaux et magie ancienne","buildings":["sanctuaire elfique ruiné","tour élancée brisée","maison-arbre pétrifiée en ruine","bibliothèque elfique effondrée","observatoire ruiné","porte lunaire brisée","pont elfique fragmentaire","temple des étoiles en ruine","pavillon de musique abandonné","atelier d’artisan elfique","serre magique détruite","palais forestier effondré","fontaine sacrée ruinée","tour de mage brisée","mausolée elfique","poste de garde ruiné","hall des anciens effondré","arcade de jardin ruinée","autel lunaire endommagé","maison noble elfique ruinée"],"secondary":["colonnes fines brisées","statues elfiques endommagées","cristaux éteints","dalles gravées illisibles","lianes","racines","fragments d’arcs","lampes magiques éteintes","bancs de pierre","vasques fendues","débris de verre magique","petits obélisques","mosaïques végétales","gravats clairs","branches envahissantes","socles vides","fontaines sèches","pierres flottantes tombées","fragments de balustrade","fleurs sauvages"],"paths":["dalles elfiques envahies","pierre claire","mousse","racines tassées","gravier fin","voie lunaire brisée"],"traits":["ruins","elf"],"colorBias":"green"},"ruines_naines":{"label":"Ruines naines","architecture":"roche taillée massive, géométrie robuste, métal riveté et galeries effondrées","buildings":["porte naine effondrée","hall de forge ruiné","tour de garde naine brisée","maison de clan en ruine","mine abandonnée","fonderie détruite","entrepôt souterrain ruiné","caserne naine effondrée","temple de la montagne ruiné","pont de pierre brisé","ascenseur minier cassé","atelier d’ingénieur ruiné","salle des runes effondrée","brasserie naine abandonnée","forteresse fragmentaire","gare de chariots miniers","mausolée nain","tour de ventilation brisée","grand escalier effondré","salle du trône ruinée"],"secondary":["engrenages cassés","rails tordus","chariots miniers","caisses métalliques","tonneaux","chaînes","braseros éteints","enclumes brisées","outils de mine","blocs runiques illisibles","gravats","poutres","lampes de mine","statues naines endommagées","piliers massifs brisés","tas de minerai","plaques de métal","cordages","treuil cassé","râteliers d’armes rouillés"],"paths":["dalles naines brisées","roche taillée","gravier minier","rails de pierre","poussière minérale","escaliers massifs"],"traits":["ruins","dwarf","stone"],"colorBias":"neutral"},"monastere":{"label":"Monastère","architecture":"pierre sobre, bois sombre, cloîtres, toits simples et architecture contemplative","buildings":["chapelle monastique","cloître","dortoir des moines","réfectoire","scriptorium","bibliothèque monastique","infirmerie","herboristerie","cellier","brasserie monastique","boulangerie","atelier de copie","tour de cloche","porte du monastère","mur d’enceinte","maison de l’abbé","ermitage","sanctuaire de jardin","pont de pierre","grange monastique"],"secondary":["bancs de pierre","lanternes","braseros","puits","jardinières d’herbes","tables simples","tonneaux","caisses","paniers","cordages","cloche","panneaux sans texte","râteliers d’outils","tas de bois","fontaine sobre","statues religieuses génériques","cierges sans flamme excessive","barrières","bancs en bois","sacs de grain"],"paths":["dalles sobres","gravier de cloître","pierre moussue","terre de jardin","pavés réguliers","chemin de méditation"],"traits":["religious","stone"],"colorBias":"neutral"},"temple_sanctuaire":{"label":"Temple ou sanctuaire","architecture":"pierre sacrée, bois rituel, symétrie et architecture cérémonielle","buildings":["grand temple","sanctuaire secondaire","chapelle votive","tour de prière","porte sacrée","cloître rituel","maison des prêtres","bibliothèque sacrée","salle des offrandes","bains rituels","autel couvert","mausolée","pavillon de méditation","entrepôt d’offrandes","cuisine communautaire","atelier de reliques","tour de cloche","pont cérémoniel","mur d’enceinte sacré","fontaine sacrée couverte"],"secondary":["autels","braseros","cierges","bancs","statues","cloches","bannières sacrées sans texte","encensoirs","vasques","offrandes génériques","lanternes","colonnes votives","petits obélisques","tables rituelles","caisses de provisions","paniers","fontaines","jardinières","barrières cérémonielles","dalles gravées illisibles"],"paths":["dalles sacrées","pierre polie","gravier rituel","voie cérémonielle","pavés sobres","escaliers de temple"],"traits":["religious","sacred"],"colorBias":"neutral"},"autel_occulte":{"label":"Autel occulte","architecture":"pierre noire, bois brûlé, formes rituelles et corruption magique","buildings":["autel occulte principal","sanctuaire souterrain","chapelle noire ruinée","tour rituelle","porte maudite","crypte","mausolée corrompu","cercle d’invocation couvert","cabane de cultistes","bibliothèque interdite","laboratoire alchimique noir","prison rituelle","entrepôt de reliques","tour de guet sombre","pont de chaînes","forge maudite","pavillon de sacrifice stylisé sans gore","tombeau ancien","salle des adeptes","portail démoniaque éteint"],"secondary":["braseros noirs","cierges violets","chaînes","crânes stylisés","ossements","livres fermés sans texte","bannières déchirées sans symbole lisible","vasques sombres","cristaux violets","statues encapuchonnées","cages vides","tables rituelles","runes illisibles","caisses","tonneaux","cordages","lanternes rouges","pieux noirs","fragments de pierre","flaques nécrotiques"],"paths":["dalles noires","terre rituelle","pierre maudite","cendres","gravier sombre","voie runique"],"traits":["occult","corrupted"],"colorBias":"magenta"},"avant_poste":{"label":"Avant-poste frontalier","architecture":"bois défensif, pierre robuste, structures compactes et fonctionnelles","buildings":["tour de guet","baraquement","petite caserne","porte palissadée","segment de palissade","armurerie","entrepôt de provisions","écurie","forge de campagne","poste de commandement","infirmerie","cuisine","prison","tour de signal","pont fortifié","maison du capitaine","refuge de voyageurs","poste de péage","abri d’archers","chapelle de garnison"],"secondary":["râteliers d’armes","caisses","tonneaux","sacs","bannières","braseros","feux de camp","cordages","barrières","chariots","tables","bancs","cibles d’entraînement","cloche d’alerte","pieux","outils","tas de bois","lanternes","boucliers empilés","panneaux frontaliers sans texte"],"paths":["terre battue","gravier compacté","planches","pierre brute","boue","voie militaire"],"traits":["military","frontier"],"colorBias":"neutral"}},"propCategories":{"all":{"label":"Toutes les catégories","keywords":[]},"vegetation":{"label":"Végétation, plantes et fleurs","keywords":["buisson","fougère","herbe","fleur","plante","liane","racine","arbre","palmier","roseau","jonc","mousse","lichen","cactus","ronce","bambou","orchidée","trèfle","lavande","coquelicot","marguerite"]},"rocks":{"label":"Pierres, minerais et cristaux","keywords":["rocher","pierre","cristal","minerai","géode","quartz","obsidienne","soufre","scorie","galet","corail","filon","fossile"]},"wood":{"label":"Bois, branches, troncs et souches","keywords":["bois","branche","tronc","souche","écorce","bûche","rondin"]},"fungi":{"label":"Champignons et spores","keywords":["champignon","spore"]},"resources":{"label":"Ressources récoltables","keywords":["médicinale","minerai","cristal","bois","fruit","baie","fleur","herbe","champignon","sel","soufre","quartz","corail"]},"abandoned":{"label":"Débris et objets abandonnés","keywords":["abandonné","cassé","brisée","débris","sac","panier","jarre","amphore","outil","corde","chaîne","lanterne","bouteille","roue","armure"]},"bones":{"label":"Ossements et restes","keywords":["os","ossement","crâne","corne"]},"fantasy":{"label":"Éléments fantastiques","keywords":["magique","luminescent","maudit","corrompu","démoniaque","nécrotique","ombre","runique","totem","portail","énergie","œil","sang","infernal","igné"]},"altars":{"label":"Autels, totems et pierres rituelles","keywords":["autel","totem","menhir","pierre runique","idole","cairn"]}}};
+
+    const NEGATIVE_TERMS = [
+      "perspective incorrecte",
+      "vue de dessus pure",
+      "vue de côté pure",
+      "vue arrière",
+      "perspective en losange diagonal",
+      "orientation diagonale classique de carte isométrique",
+      "perspective incohérente",
+      "angle de caméra variable",
+      "éléments photoréalistes",
+      "rendu 3D réaliste",
+      "peinture numérique",
+      "illustration lisse",
+      "sprites flous",
+      "anti-aliasing excessif",
+      "contours imprécis",
+      "pixels semi-transparents sur les contours",
+      "tailles incohérentes",
+      "échelles incohérentes",
+      "objets coupés",
+      "objets hors cadre",
+      "objets superposés",
+      "sprites fusionnés",
+      "éléments traversant plusieurs cellules",
+      "plusieurs éléments dans une cellule",
+      "cellules irrégulières",
+      "grille déformée",
+      "espacements irréguliers",
+      "arrière-plan texturé",
+      "dégradé de fond",
+      "bruit sur le fond",
+      "motif de fond",
+      "ombres portées sur le fond",
+      "halo vert",
+      "halo rose",
+      "halo magenta",
+      "contamination chromatique du masque",
+      "franges colorées",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logos",
+      "signatures",
+      "filigranes",
+      "cadres",
+      "interfaces",
+      "icônes d’interface",
+      "personnages non demandés",
+      "animaux non demandés",
+      "objets incohérents avec le biome",
+      "bâtiments incohérents avec le lieu",
+      "lumières différentes entre les cellules",
+      "palettes contradictoires",
+      "marges insuffisantes",
+      "fond transparent"
+    ];
+
+    const TILE_ROLES = {
+      grounds: {
+        basic: [
+          "tuile centrale principale",
+          "bord nord",
+          "bord est",
+          "bord sud",
+          "bord ouest",
+          "coin intérieur nord-est",
+          "coin intérieur sud-est",
+          "coin intérieur sud-ouest",
+          "coin intérieur nord-ouest",
+          "coin extérieur nord-est",
+          "coin extérieur sud-est",
+          "coin extérieur sud-ouest",
+          "coin extérieur nord-ouest"
+        ],
+        complete: [
+          "tuile centrale principale",
+          "tuile centrale variante A",
+          "tuile centrale variante B",
+          "tuile centrale variante C",
+          "bord nord",
+          "bord est",
+          "bord sud",
+          "bord ouest",
+          "coin intérieur nord-est",
+          "coin intérieur sud-est",
+          "coin intérieur sud-ouest",
+          "coin intérieur nord-ouest",
+          "coin extérieur nord-est",
+          "coin extérieur sud-est",
+          "coin extérieur sud-ouest",
+          "coin extérieur nord-ouest",
+          "transition nord",
+          "transition est",
+          "transition sud",
+          "transition ouest",
+          "raccord irrégulier A",
+          "raccord irrégulier B"
+        ],
+        variations: [
+          "tuile centrale principale",
+          "tuile centrale variante légère A",
+          "tuile centrale variante légère B",
+          "tuile centrale variante légère C",
+          "tuile centrale variante de détail A",
+          "tuile centrale variante de détail B",
+          "tuile centrale usée",
+          "tuile centrale presque uniforme"
+        ]
+      },
+      paths: {
+        minimal: [
+          "chemin droit horizontal, axe X",
+          "chemin droit vertical, axe Y",
+          "virage en L nord-est",
+          "virage en L sud-est",
+          "virage en L sud-ouest",
+          "virage en L nord-ouest",
+          "extrémité nord",
+          "extrémité est",
+          "extrémité sud",
+          "extrémité ouest"
+        ],
+        standard: [
+          "chemin droit horizontal, axe X",
+          "chemin droit vertical, axe Y",
+          "virage en L nord-est",
+          "virage en L sud-est",
+          "virage en L sud-ouest",
+          "virage en L nord-ouest",
+          "intersection en T ouverte vers le nord",
+          "intersection en T ouverte vers l’est",
+          "intersection en T ouverte vers le sud",
+          "intersection en T ouverte vers l’ouest",
+          "croisement en X ou en croix",
+          "extrémité nord",
+          "extrémité est",
+          "extrémité sud",
+          "extrémité ouest"
+        ],
+        complete: [
+          "chemin droit horizontal, axe X",
+          "chemin droit vertical, axe Y",
+          "chemin droit horizontal abîmé",
+          "chemin droit vertical abîmé",
+          "virage en L nord-est",
+          "virage en L sud-est",
+          "virage en L sud-ouest",
+          "virage en L nord-ouest",
+          "intersection en T ouverte vers le nord",
+          "intersection en T ouverte vers l’est",
+          "intersection en T ouverte vers le sud",
+          "intersection en T ouverte vers l’ouest",
+          "croisement en X ou en croix",
+          "extrémité nord",
+          "extrémité est",
+          "extrémité sud",
+          "extrémité ouest",
+          "segment de début",
+          "segment de fin",
+          "chemin isolé",
+          "transition vers terrain A",
+          "transition vers terrain B",
+          "bordure irrégulière A",
+          "bordure irrégulière B"
+        ]
+      },
+      liquids: [
+        "centre du liquide, surface calme",
+        "centre du liquide, ondulations légères",
+        "bord nord",
+        "bord est",
+        "bord sud",
+        "bord ouest",
+        "coin intérieur nord-est",
+        "coin intérieur sud-est",
+        "coin intérieur sud-ouest",
+        "coin intérieur nord-ouest",
+        "coin extérieur nord-est",
+        "coin extérieur sud-est",
+        "coin extérieur sud-ouest",
+        "coin extérieur nord-ouest",
+        "petite zone isolée",
+        "raccord de rive A",
+        "raccord de rive B",
+        "transition avec le sol A",
+        "transition avec le sol B",
+        "variante visuelle sans couture"
+      ]
+    };
+
+    const MATERIAL_CLASS_KEYWORDS = {
+      snow: ["neige", "enneig", "givre", "gelé", "gelée"],
+      ice: ["glace", "glacé", "glacée"],
+      sand: ["sable", "dune", "corail", "coquillage"],
+      volcanic: ["volcan", "lave", "magma", "basalte", "obsidienne", "cendre", "igné"],
+      stone: ["pierre", "dalle", "pavé", "roche", "grès", "galet", "marbre"],
+      wood: ["bois", "planche", "rondin", "bambou"],
+      earth: ["terre", "poussière", "sol craquelé"],
+      grass: ["herbe", "mousse", "racine", "feuille"],
+      mud: ["boue", "vase", "tourbe"],
+      gravel: ["gravier", "caillou", "éboulis"],
+      corrupted: ["maudit", "corrompu", "démoniaque", "nécrotique", "ombre", "runique", "noir", "pourpre"]
+    };
+
+    const GREEN_WORDS = ["vert", "herbe", "feuille", "fougère", "buisson", "mousse", "plante", "liane", "roseau", "jonc", "palmier", "jungle", "trèfle", "algue"];
+    const MAGENTA_WORDS = ["rose", "magenta", "violet", "pourpre", "lavande", "orchidée", "fleur de sang", "corrompu", "nécrotique"];
+
+    const $ = (selector, scope = document) => scope.querySelector(selector);
+    const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
+
+    const ui = {
+      activeTab: "props",
+      activeTile: "grounds",
+      currentItems: { props: [], places: [], tiles: [] },
+      selected: { props: new Set(), places: new Set(), tiles: new Set() },
+      lastGeneratedCellPlan: []
+    };
+
+    function normalizeText(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    }
+
+    function clampInteger(value, min, max, fallback) {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed)) return fallback;
+      return Math.min(max, Math.max(min, parsed));
+    }
+
+    function unique(values) {
+      return [...new Set(values.filter(Boolean))];
+    }
+
+    function optionEntries(object) {
+      return Object.entries(object).map(([value, data]) => ({ value, label: data.label }));
+    }
+
+    function populateSelect(select, options, includeBlank = null) {
+      const previous = select.value;
+      select.innerHTML = "";
+      if (includeBlank) {
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = includeBlank;
+        select.appendChild(blank);
+      }
+      options.forEach(option => {
+        const node = document.createElement("option");
+        if (typeof option === "string") {
+          node.value = option;
+          node.textContent = option;
+        } else {
+          node.value = option.value;
+          node.textContent = option.label;
+        }
+        select.appendChild(node);
+      });
+      if ([...select.options].some(option => option.value === previous)) {
+        select.value = previous;
+      }
+    }
+
+    function initializeMenus() {
+      const biomeOptions = optionEntries(APP_DATA.biomes);
+      const placeOptions = optionEntries(APP_DATA.places);
+      populateSelect($("#propsBiome"), biomeOptions);
+      populateSelect($("#tilesBiome"), biomeOptions);
+      populateSelect($("#placeType"), placeOptions);
+      populateSelect($("#pathPlace"), placeOptions, "Aucun lieu précis");
+      populateSelect($("#propsCategory"), optionEntries(APP_DATA.propCategories));
+
+      $("#propsBiome").value = "foret_temperee";
+      $("#tilesBiome").value = "foret_temperee";
+      $("#placeType").value = "village_paysan";
+      $("#propsCategory").value = "all";
+      $("#pathPlace").value = "";
+
+      updateGroundMenus();
+      refreshAllChoiceLists(true);
+    }
+
+    function updateGroundMenus() {
+      const biome = APP_DATA.biomes[$("#tilesBiome").value];
+      const options = biome.grounds.map(item => ({ value: item, label: item }));
+      populateSelect($("#groundNeighbour"), options, "Aucun sol voisin précis");
+      populateSelect($("#pathGround"), options);
+    }
+
+    function materialClass(value) {
+      const normalized = normalizeText(value);
+      for (const [className, words] of Object.entries(MATERIAL_CLASS_KEYWORDS)) {
+        if (words.some(word => normalized.includes(normalizeText(word)))) return className;
+      }
+      return "other";
+    }
+
+    function compatiblePathMaterials() {
+      const biome = APP_DATA.biomes[$("#tilesBiome").value];
+      const placeKey = $("#pathPlace").value;
+      const fantasy = $("#allowFantasy").checked;
+
+      if (!placeKey) return biome.paths.slice();
+
+      const place = APP_DATA.places[placeKey];
+      if (fantasy) return unique([...biome.paths, ...place.paths]);
+
+      const biomeClasses = new Set(biome.paths.map(materialClass));
+      const placeClasses = new Set(place.paths.map(materialClass));
+
+      const fromBiome = biome.paths.filter(item => placeClasses.has(materialClass(item)));
+      const fromPlace = place.paths.filter(item => biomeClasses.has(materialClass(item)));
+      const exact = biome.paths.filter(item => place.paths.includes(item));
+      const result = unique([...exact, ...fromBiome, ...fromPlace]);
+
+      return result.length ? result : biome.paths.slice(0, 4);
+    }
+
+    function getPropsItems() {
+      const biome = APP_DATA.biomes[$("#propsBiome").value];
+      const categoryKey = $("#propsCategory").value;
+      const category = APP_DATA.propCategories[categoryKey];
+      if (!category || !category.keywords.length) return biome.props.slice();
+
+      const filtered = biome.props.filter(item => {
+        const normalized = normalizeText(item);
+        return category.keywords.some(keyword => normalized.includes(normalizeText(keyword)));
+      });
+      return filtered.length ? filtered : biome.props.slice();
+    }
+
+    function getPlaceItems() {
+      const place = APP_DATA.places[$("#placeType").value];
+      const content = $("#placeContent").value;
+      if (content === "buildings") return place.buildings.slice();
+      if (content === "secondary") return place.secondary.slice();
+      return unique([...place.buildings, ...place.secondary]);
+    }
+
+    function getTileItems() {
+      const biome = APP_DATA.biomes[$("#tilesBiome").value];
+      if (ui.activeTile === "grounds") return biome.grounds.slice();
+      if (ui.activeTile === "liquids") return biome.liquids.slice();
+      return compatiblePathMaterials();
+    }
+
+    function refreshChoiceList(target, preserveSelection = false) {
+      let items = [];
+      if (target === "props") items = getPropsItems();
+      if (target === "places") items = getPlaceItems();
+      if (target === "tiles") items = getTileItems();
+
+      ui.currentItems[target] = items;
+      if (!preserveSelection) ui.selected[target].clear();
+
+      // Retire les sélections qui ne sont plus proposées par le contexte.
+      ui.selected[target] = new Set([...ui.selected[target]].filter(item => items.includes(item)));
+
+      // Présélection utile au premier chargement ou après changement de contexte.
+      if (ui.selected[target].size === 0 && items.length) {
+        items.slice(0, Math.min(4, items.length)).forEach(item => ui.selected[target].add(item));
+      }
+
+      renderChoiceList(target);
+    }
+
+    function renderChoiceList(target) {
+      const list = $("#" + target + "ChoiceList");
+      const searchInput = $(`[data-search="${target}"]`);
+      const query = normalizeText(searchInput ? searchInput.value : "");
+      list.innerHTML = "";
+
+      const visibleItems = ui.currentItems[target].filter(item => normalizeText(item).includes(query));
+      visibleItems.forEach(item => {
+        const label = document.createElement("label");
+        label.className = "choice-item";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = ui.selected[target].has(item);
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) ui.selected[target].add(item);
+          else ui.selected[target].delete(item);
+          updateChoiceCount(target);
+          updateLivePreview();
+        });
+        const text = document.createElement("span");
+        text.textContent = item;
+        label.append(checkbox, text);
+        list.appendChild(label);
+      });
+
+      if (!visibleItems.length) {
+        const empty = document.createElement("div");
+        empty.className = "warning-item info";
+        empty.style.gridColumn = "1 / -1";
+        empty.textContent = "Aucun élément ne correspond au filtre actuel.";
+        list.appendChild(empty);
+      }
+      updateChoiceCount(target);
+    }
+
+    function updateChoiceCount(target) {
+      const count = ui.selected[target].size;
+      $("#" + target + "ChoiceCount").textContent = `${count} sélection${count > 1 ? "s" : ""}`;
+    }
+
+    function refreshAllChoiceLists(initial = false) {
+      refreshChoiceList("props", !initial);
+      refreshChoiceList("places", !initial);
+      refreshChoiceList("tiles", !initial);
+      updatePlaceArchitecture();
+      updateLivePreview();
+    }
+
+    function activeSelectionKey() {
+      return ui.activeTab === "tiles" ? "tiles" : ui.activeTab;
+    }
+
+    function selectedElements() {
+      const key = activeSelectionKey();
+      const selected = [...ui.selected[key]];
+      const custom = $("#customElements").value
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean);
+      return unique([...selected, ...custom]);
+    }
+
+    function contextData() {
+      if (ui.activeTab === "props") return APP_DATA.biomes[$("#propsBiome").value];
+      if (ui.activeTab === "places") return APP_DATA.places[$("#placeType").value];
+      return APP_DATA.biomes[$("#tilesBiome").value];
+    }
+
+    function recommendMask(elements = selectedElements()) {
+      const context = contextData();
+      let greenScore = context.colorBias === "green" ? 4 : 0;
+      let magentaScore = context.colorBias === "magenta" ? 4 : 0;
+
+      const joined = normalizeText(elements.join(" "));
+      GREEN_WORDS.forEach(word => {
+        if (joined.includes(normalizeText(word))) greenScore += 1;
+      });
+      MAGENTA_WORDS.forEach(word => {
+        if (joined.includes(normalizeText(word))) magentaScore += 1;
+      });
+
+      // Beaucoup de vert dans les sprites => masque magenta.
+      if (greenScore > magentaScore) return "magenta";
+      // Beaucoup de rose/violet/magenta => masque vert.
+      if (magentaScore > greenScore) return "green";
+
+      // Pour les bâtiments et matériaux neutres, magenta est généralement très visible.
+      return ui.activeTab === "places" ? "magenta" : "green";
+    }
+
+    function resolvedMask(elements = selectedElements()) {
+      const requested = $("#maskMode").value;
+      return requested === "auto" ? recommendMask(elements) : requested;
+    }
+
+    function maskInfo(mask) {
+      return mask === "magenta"
+        ? { label: "Fond magenta uni #FF00FF", hex: "#ff00ff" }
+        : { label: "Fond vert uni #00FF00", hex: "#00ff00" };
+    }
+
+    function updateMaskPreview() {
+      const elements = selectedElements();
+      const recommendation = recommendMask(elements);
+      const resolved = resolvedMask(elements);
+      const info = maskInfo(resolved);
+      $("#maskSwatch").style.background = info.hex;
+      $("#maskTitle").textContent = info.label;
+
+      if ($("#maskMode").value === "auto") {
+        $("#maskDescription").textContent = `Choisi automatiquement. Recommandation actuelle : ${maskInfo(recommendation).label}.`;
+      } else if (resolved !== recommendation) {
+        $("#maskDescription").textContent = `Choix manuel différent de la recommandation : ${maskInfo(recommendation).label}.`;
+      } else {
+        $("#maskDescription").textContent = "Le choix manuel correspond à la recommandation automatique.";
+      }
+    }
+
+    function updateGridPreview() {
+      const columns = clampInteger($("#columns").value, 1, 12, 4);
+      const rows = clampInteger($("#rows").value, 1, 12, 4);
+      const width = clampInteger($("#resolutionWidth").value, 1, 8192, 1254);
+      const height = clampInteger($("#resolutionHeight").value, 1, 8192, 1254);
+      const total = columns * rows;
+
+      $("#columns").value = columns;
+      $("#rows").value = rows;
+      $("#resolutionWidth").value = width;
+      $("#resolutionHeight").value = height;
+
+      $("#spriteCount").textContent = total;
+      $("#gridMeta").innerHTML = `<strong>${columns} × ${rows}</strong><br>Résolution ${width} × ${height} px<br>Cellule théorique ${(width / columns).toFixed(1)} × ${(height / rows).toFixed(1)} px`;
+
+      const preview = $("#gridPreview");
+      preview.innerHTML = "";
+      preview.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+      preview.style.setProperty("--preview-ratio", `${width} / ${height}`);
+
+      for (let index = 0; index < total; index += 1) {
+        const cell = document.createElement("div");
+        cell.className = "grid-cell";
+        cell.title = `Cellule ${index + 1}`;
+        preview.appendChild(cell);
+      }
+    }
+
+    function updatePlaceArchitecture() {
+      const place = APP_DATA.places[$("#placeType").value];
+      $("#placeArchitecture").textContent = `Architecture : ${place.architecture}`;
+    }
+
+    function validateConfiguration() {
+      const warnings = [];
+      const total = clampInteger($("#columns").value, 1, 12, 4) * clampInteger($("#rows").value, 1, 12, 4);
+      const selected = selectedElements();
+      const mode = $("#distributionMode").value;
+      const allowFantasy = $("#allowFantasy").checked;
+      const context = contextData();
+      const mood = $("#moodOption").value;
+      const state = $("#stateOption").value;
+      const requestedMask = $("#maskMode").value;
+      const recommendation = recommendMask(selected);
+
+      if (!selected.length) {
+        warnings.push({ level: "error", text: "Aucun élément n’est sélectionné. Sélectionne au moins un contenu ou ajoute un élément personnalisé." });
+      }
+
+      if (mode === "identical" && selected.length > 1) {
+        warnings.push({ level: "warn", text: "Le mode « élément identique répété » utilisera uniquement le premier élément sélectionné." });
+      }
+
+      if (mode === "variants" && selected.length > 1) {
+        warnings.push({ level: "info", text: "Le mode « variantes d’un même élément » prendra le premier élément comme base principale." });
+      }
+
+      if (total > 64) {
+        warnings.push({ level: "warn", text: `La grille contient ${total} sprites. Les générateurs d’images peuvent perdre en précision au-delà de 64 cellules.` });
+      }
+
+      const cellWidth = clampInteger($("#resolutionWidth").value, 1, 8192, 1254) / clampInteger($("#columns").value, 1, 12, 4);
+      const cellHeight = clampInteger($("#resolutionHeight").value, 1, 8192, 1254) / clampInteger($("#rows").value, 1, 12, 4);
+      if (Math.min(cellWidth, cellHeight) < 96) {
+        warnings.push({ level: "warn", text: "Les cellules théoriques font moins de 96 px sur un côté. Les détails Pixel Art risquent d’être difficiles à préserver." });
+      }
+
+      if (requestedMask !== "auto" && requestedMask !== recommendation) {
+        warnings.push({ level: "warn", text: `Le fond choisi diffère du meilleur contraste estimé. Recommandation : ${maskInfo(recommendation).label}.` });
+      }
+
+      if (!allowFantasy) {
+        if (context.climate === "hot" && mood === "enneigée") {
+          warnings.push({ level: "warn", text: "Ambiance enneigée inhabituelle pour un biome chaud. Active « combinaisons fantastiques » pour assumer ce contraste." });
+        }
+        if (context.climate === "cold" && mood === "brûlée") {
+          warnings.push({ level: "warn", text: "Ambiance brûlée inhabituelle pour un biome froid. La combinaison reste possible mais doit être justifiée visuellement." });
+        }
+        if (ui.activeTab === "places") {
+          const place = APP_DATA.places[$("#placeType").value];
+          if (place.traits.includes("ruins") && state === "neuf") {
+            warnings.push({ level: "warn", text: "Un lieu de ruines ne devrait normalement pas être généré à l’état neuf." });
+          }
+          if (place.traits.includes("occult") && mood === "normale") {
+            warnings.push({ level: "info", text: "Une ambiance sombre ou corrompue est généralement plus cohérente avec un autel occulte." });
+          }
+        }
+      }
+
+      if (ui.activeTab === "tiles") {
+        const minimum = ui.activeTile === "liquids"
+          ? 16
+          : ui.activeTile === "paths"
+            ? ($("#pathKit").value === "complete" ? 20 : 10)
+            : ($("#groundComplexity").value === "complete" ? 16 : 9);
+
+        if (total < minimum) {
+          warnings.push({ level: "warn", text: `Cette grille de ${total} cellules est petite pour un kit de tiles complet. Minimum conseillé : environ ${minimum} cellules.` });
+        }
+
+        if (ui.activeTile === "paths" && $("#pathPlace").value && compatiblePathMaterials().length <= 4 && !allowFantasy) {
+          warnings.push({ level: "info", text: "Les matériaux de chemin ont été fortement filtrés pour rester compatibles à la fois avec le biome et le lieu." });
+        }
+      }
+
+      if ($("#lockCoherence").checked) {
+        warnings.push({ level: "ok", text: "Cohérence visuelle verrouillée : perspective, palette, lumière, échelle et raccords seront explicitement uniformisés." });
+      } else {
+        warnings.push({ level: "warn", text: "Le verrouillage de cohérence visuelle est désactivé. Des variations d’échelle ou de lumière peuvent apparaître." });
+      }
+
+      return warnings;
+    }
+
+    function renderWarnings() {
+      const warnings = validateConfiguration();
+      const container = $("#warnings");
+      container.innerHTML = "";
+      warnings.forEach(warning => {
+        const item = document.createElement("div");
+        item.className = `warning-item ${warning.level}`;
+        item.textContent = warning.text;
+        container.appendChild(item);
+      });
+      if (!warnings.length) {
+        const ok = document.createElement("div");
+        ok.className = "warning-item ok";
+        ok.textContent = "Configuration cohérente.";
+        container.appendChild(ok);
+      }
+    }
+
+    function randomShuffle(values) {
+      const copy = values.slice();
+      for (let index = copy.length - 1; index > 0; index -= 1) {
+        const target = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[target]] = [copy[target], copy[index]];
+      }
+      return copy;
+    }
+
+    function variationSuffix(index) {
+      const enabled = [];
+      if ($("#varyShape").checked) enabled.push("forme");
+      if ($("#varyColor").checked) enabled.push("couleur");
+      if ($("#varyWear").checked) enabled.push("usure");
+      if (!enabled.length) return `variante ${index + 1}`;
+      return `variante ${index + 1} de ${enabled.join(", ")}`;
+    }
+
+    function tileRoleSequence() {
+      if (ui.activeTile === "grounds") {
+        return TILE_ROLES.grounds[$("#groundComplexity").value];
+      }
+      if (ui.activeTile === "paths") {
+        return TILE_ROLES.paths[$("#pathKit").value];
+      }
+      return TILE_ROLES.liquids;
+    }
+
+    function buildCellPlan(total, elements) {
+      if (!elements.length) return [];
+
+      if (ui.activeTab === "tiles") {
+        const roles = tileRoleSequence();
+        const plan = [];
+        for (let index = 0; index < total; index += 1) {
+          const material = elements[index % elements.length];
+          const role = roles[index % roles.length];
+          const cycle = Math.floor(index / roles.length);
+          plan.push(cycle > 0 ? `${material} — ${role}, variante visuelle ${cycle + 1}` : `${material} — ${role}`);
+        }
+        return plan;
+      }
+
+      const mode = $("#distributionMode").value;
+      if (mode === "identical") {
+        return Array.from({ length: total }, () => elements[0]);
+      }
+      if (mode === "variants") {
+        return Array.from({ length: total }, (_, index) => `${elements[0]} — ${variationSuffix(index)}`);
+      }
+      if (mode === "different") {
+        return Array.from({ length: total }, (_, index) => {
+          const base = elements[index % elements.length];
+          const cycle = Math.floor(index / elements.length);
+          return cycle ? `${base} — variante ${cycle + 1}` : base;
+        });
+      }
+
+      const source = randomShuffle(elements);
+      return Array.from({ length: total }, (_, index) => {
+        const base = source[index % source.length];
+        const cycle = Math.floor(index / source.length);
+        return cycle ? `${base} — ${variationSuffix(cycle)}` : base;
+      });
+    }
+
+    function activeContextDescription() {
+      if (ui.activeTab === "props") {
+        const biome = APP_DATA.biomes[$("#propsBiome").value];
+        const category = APP_DATA.propCategories[$("#propsCategory").value];
+        return {
+          type: "sprite sheet de petits objets de décor",
+          context: `Biome : ${biome.label}. Catégorie : ${category.label}.`,
+          architecture: "",
+          intent: $("#propsIntent").value.trim()
+        };
+      }
+
+      if (ui.activeTab === "places") {
+        const place = APP_DATA.places[$("#placeType").value];
+        const contentLabels = {
+          buildings: "bâtiments et structures principales",
+          secondary: "éléments secondaires de décor",
+          mixed: "assortiment de bâtiments et d’éléments secondaires"
+        };
+        const scaleLabels = {
+          structure_complete: "structures complètes isolées",
+          module: "modules architecturaux assemblables",
+          prop_structure: "petits éléments de structure"
+        };
+        return {
+          type: `sprite sheet de ${contentLabels[$("#placeContent").value]}`,
+          context: `Lieu : ${place.label}. Architecture obligatoire : ${place.architecture}. Représentation : ${scaleLabels[$("#placeScale").value]}. Variante : ${$("#buildingVariant").selectedOptions[0].textContent}.`,
+          architecture: place.architecture,
+          intent: $("#placeIntent").value.trim()
+        };
+      }
+
+      const biome = APP_DATA.biomes[$("#tilesBiome").value];
+      const tileLabels = {
+        grounds: "tileset de sols seamless",
+        paths: "tileset de chemins raccordables",
+        liquids: "tileset d’eaux ou de liquides raccordables"
+      };
+      let extra = "";
+      if (ui.activeTile === "grounds") {
+        extra = $("#groundNeighbour").value
+          ? `Transition prévue vers le sol voisin : ${$("#groundNeighbour").value}.`
+          : "Prévoir les bords et transitions autonomes du matériau.";
+      }
+      if (ui.activeTile === "paths") {
+        const place = $("#pathPlace").value ? APP_DATA.places[$("#pathPlace").value].label : "aucun lieu précis";
+        extra = `Lieu associé : ${place}. Sol environnant : ${$("#pathGround").value}. Kit : ${$("#pathKit").selectedOptions[0].textContent}. Variantes : ${$("#pathDamage").selectedOptions[0].textContent}.`;
+      }
+      if (ui.activeTile === "liquids") {
+        extra = `Rive : ${$("#liquidShore").selectedOptions[0].textContent}. Mouvement : ${$("#liquidMotion").selectedOptions[0].textContent}.`;
+      }
+      return {
+        type: tileLabels[ui.activeTile],
+        context: `Biome : ${biome.label}. ${extra}`,
+        architecture: "",
+        intent: $("#tilesIntent").value.trim()
+      };
+    }
+
+    function buildPrompt() {
+      const columns = clampInteger($("#columns").value, 1, 12, 4);
+      const rows = clampInteger($("#rows").value, 1, 12, 4);
+      const width = clampInteger($("#resolutionWidth").value, 1, 8192, 1254);
+      const height = clampInteger($("#resolutionHeight").value, 1, 8192, 1254);
+      const total = columns * rows;
+      const cellWidth = width / columns;
+      const cellHeight = height / rows;
+      const elements = selectedElements();
+      const mask = resolvedMask(elements);
+      const maskDetails = maskInfo(mask);
+      const context = activeContextDescription();
+      const plan = buildCellPlan(total, elements);
+      ui.lastGeneratedCellPlan = plan;
+
+      const variationRules = [];
+      if ($("#varyColor").checked) variationRules.push("variations de couleur modérées");
+      if ($("#varyShape").checked) variationRules.push("variations de forme lisibles");
+      if ($("#varyWear").checked) variationRules.push("variations d’usure contrôlées");
+      if (!variationRules.length) variationRules.push("aucune variation aléatoire non demandée");
+
+      const shadowRule = $("#integratedShadow").checked
+        ? "Autoriser uniquement une petite ombre intégrée à l’intérieur de l’emprise du sprite, compacte et identique pour toutes les cellules ; aucune ombre ne doit salir le fond."
+        : "Désactiver les ombres portées ; aucune ombre ne doit apparaître sur le fond.";
+
+      const outlineRule = $("#pixelOutline").checked
+        ? "Utiliser une bordure Pixel Art nette, régulière et cohérente, sans anti-aliasing excessif."
+        : "Ne pas ajouter de contour artificiel épais ; conserver uniquement des bords Pixel Art propres.";
+
+      const paletteRule = $("#limitedPalette").checked
+        ? "Utiliser une palette limitée, cohérente et partagée entre toute la planche."
+        : "Conserver malgré tout une harmonie colorimétrique commune entre les cellules.";
+
+      const coherenceRule = $("#lockCoherence").checked
+        ? "Verrouiller strictement la même caméra, la même perspective, la même orientation, la même échelle visuelle, la même lumière, la même direction d’éclairage et la même palette sur toute la sprite sheet."
+        : "Maintenir autant que possible une cohérence générale entre les cellules.";
+
+      const fantasyRule = $("#allowFantasy").checked
+        ? "Les associations fantastiques inhabituelles explicitement sélectionnées sont autorisées, mais elles doivent rester visuellement logiques."
+        : "Refuser tout élément incohérent avec le biome ou le lieu sélectionné.";
+
+      const seamlessRule = ui.activeTab === "tiles"
+        ? "Chaque tuile doit être seamless, répétable sans couture visible, avec des raccords placés exactement aux mêmes coordonnées sur les côtés compatibles. Les tuiles doivent partager la même largeur, la même hauteur et la même emprise au sol."
+        : "Chaque sprite doit être totalement isolé, centré et indépendant des cellules voisines.";
+
+      const cellPlanText = plan.length
+        ? plan.map((item, index) => `${index + 1}. ${item}`).join("\n")
+        : "Aucun contenu défini.";
+
+      const mainPrompt = [
+        `1. TYPE D’IMAGE\nCréer une ${context.type} destinée à un jeu vidéo indépendant de type RPG médiéval-fantastique sombre. Inspiration générale : ambiance de MMORPG médiéval-fantastique et d’open world dark fantasy, sans reproduire ni copier des assets existants.`,
+        `2. STYLE ARTISTIQUE\nPixel Art authentique, lisible en jeu, détails de niveau ${$("#detailLevel").value}, état global ${$("#stateOption").value}, ambiance ${$("#moodOption").value}. ${outlineRule} ${paletteRule}`,
+        `3. ANGLE DE VUE OBLIGATOIRE\nVue isométrique 3/4 de face : chaque élément est vu principalement de face et légèrement du dessus. Ne jamais utiliser une orientation en diagonale de type losange isométrique. La façade ou le côté principal doit rester orienté vers l’observateur. Aucun changement d’angle entre les cellules.`,
+        `4. CONTEXTE\n${context.context}${context.intent ? ` Intention complémentaire : ${context.intent}.` : ""}`,
+        `5. ÉLÉMENTS DEMANDÉS\nÉléments sources sélectionnés : ${elements.length ? elements.join(" ; ") : "aucun élément sélectionné"}. Mode de répartition : ${$("#distributionMode").selectedOptions[0].textContent}. Appliquer ${variationRules.join(", ")}.`,
+        `6. RÉPARTITION EXACTE DES CELLULES\n${cellPlanText}`,
+        `7. GRILLE ET RÉSOLUTION\nImage totale exactement ${width} × ${height} pixels. Grille régulière de ${columns} colonnes × ${rows} lignes, soit exactement ${total} cellules et exactement ${total} sprites ou tuiles. Taille théorique d’une cellule : ${cellWidth.toFixed(1)} × ${cellHeight.toFixed(1)} pixels. Placer exactement un seul élément clairement identifiable par cellule. Respecter l’ordre des cellules de gauche à droite, puis de haut en bas.`,
+        `8. ÉCHELLE, CENTRAGE ET MARGES\nTaille apparente ${$("#spriteSize").value}. Tous les éléments doivent occuper une proportion comparable de leur cellule. Éviter tout écart extrême de taille apparente. Centrer chaque élément dans sa cellule, conserver une marge de sécurité régulière sur les quatre côtés, ne jamais toucher ni dépasser les limites de cellule, ne jamais empiéter sur une cellule voisine. ${seamlessRule}`,
+        `9. FOND DE DÉTOURAGE\nUtiliser exclusivement un ${maskDetails.label}, parfaitement uniforme sur 100 % des zones de fond. Aucun dégradé, aucune texture, aucun motif, aucun bruit, aucune variation de teinte et aucune transparence. Le fond doit rester clairement visible entre chaque sprite. Éviter autant que possible les couleurs internes trop proches du masque. Interdire tout halo, frange, pixel semi-transparent ou contamination ${mask === "magenta" ? "rose/magenta" : "verte"} sur les contours. ${shadowRule}`,
+        `10. COHÉRENCE VISUELLE\n${coherenceRule} Conserver la même densité de pixels, le même contraste et la même finition sur tous les éléments. Les objets ou bâtiments doivent appartenir au même univers visuel et au même niveau technologique médiéval-fantastique. ${fantasyRule}`,
+        `11. CONTRAINTES FINALES\nAucun texte, aucune lettre, aucun chiffre, aucun logo, aucune signature, aucun filigrane, aucun cadre, aucune interface, aucun personnage non demandé. Aucun sprite coupé, fusionné, superposé ou partagé entre plusieurs cellules. Fond totalement propre pour permettre un détourage automatique fiable.`
+      ].join("\n\n");
+
+      const negativePrompt = NEGATIVE_TERMS.join(", ");
+
+      return { mainPrompt, negativePrompt };
+    }
+
+    function updateCharCounts() {
+      const promptLength = $("#promptOutput").value.length;
+      const negativeLength = $("#negativeOutput").value.length;
+      $("#promptCharCount").textContent = `${promptLength} caractère${promptLength > 1 ? "s" : ""}`;
+      $("#negativeCharCount").textContent = `${negativeLength} caractère${negativeLength > 1 ? "s" : ""}`;
+    }
+
+    function generatePrompt() {
+      const warnings = validateConfiguration();
+      if (warnings.some(item => item.level === "error")) {
+        renderWarnings();
+        showToast("Corrige les erreurs signalées avant de générer.");
+        return;
+      }
+      const result = buildPrompt();
+      $("#promptOutput").value = result.mainPrompt;
+      $("#negativeOutput").value = result.negativePrompt;
+      updateCharCounts();
+      renderWarnings();
+      showToast("Prompt généré.");
+    }
+
+    async function copyPrompt() {
+      if (!$("#promptOutput").value.trim()) generatePrompt();
+      if (!$("#promptOutput").value.trim()) return;
+
+      const combined = `PROMPT PRINCIPAL\n\n${$("#promptOutput").value}\n\nNEGATIVE PROMPT\n\n${$("#negativeOutput").value}`;
+      try {
+        await navigator.clipboard.writeText(combined);
+        showToast("Prompt principal et negative prompt copiés.");
+      } catch (error) {
+        const helper = document.createElement("textarea");
+        helper.value = combined;
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+        showToast("Prompt copié avec la méthode de compatibilité.");
+      }
+    }
+
+    let toastTimer = null;
+    function showToast(message) {
+      const toast = $("#toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2300);
+    }
+
+    function updateLivePreview() {
+      updateGridPreview();
+      updateMaskPreview();
+      renderWarnings();
+    }
+
+    function switchTab(tab) {
+      ui.activeTab = tab;
+      $$(".tab-btn").forEach(button => button.classList.toggle("active", button.dataset.tab === tab));
+      $$(".tab-panel").forEach(panel => panel.classList.toggle("active", panel.id === `tab-${tab}`));
+      updateLivePreview();
+    }
+
+    function switchSubtab(subtab) {
+      ui.activeTile = subtab;
+      $$(".subtab-btn").forEach(button => button.classList.toggle("active", button.dataset.subtab === subtab));
+      $$(".sub-config").forEach(panel => panel.classList.toggle("active", panel.id === `sub-${subtab}`));
+      refreshChoiceList("tiles", false);
+      $("#tilesCompatibility").textContent = subtab === "paths" ? "Biome + lieu filtrés" : "Liste dépendante du biome";
+      updateLivePreview();
+    }
+
+    function handleChoiceAction(action, target) {
+      const items = ui.currentItems[target];
+      if (action === "none") ui.selected[target].clear();
+      if (action === "all") items.forEach(item => ui.selected[target].add(item));
+      if (action === "random") {
+        ui.selected[target].clear();
+        randomShuffle(items).slice(0, Math.min(8, items.length)).forEach(item => ui.selected[target].add(item));
+      }
+      renderChoiceList(target);
+      updateLivePreview();
+    }
+
+    function resetApplication() {
+      $("#columns").value = 4;
+      $("#rows").value = 4;
+      $("#resolutionWidth").value = 1254;
+      $("#resolutionHeight").value = 1254;
+      $("#distributionMode").value = "assortment";
+      $("#spriteSize").value = "moyenne";
+      $("#maskMode").value = "auto";
+      $("#detailLevel").value = "moyen";
+      $("#stateOption").value = "utilisé";
+      $("#moodOption").value = "normale";
+      $("#customElements").value = "";
+      $("#varyColor").checked = true;
+      $("#varyShape").checked = true;
+      $("#varyWear").checked = true;
+      $("#integratedShadow").checked = false;
+      $("#pixelOutline").checked = true;
+      $("#limitedPalette").checked = true;
+      $("#lockCoherence").checked = true;
+      $("#allowFantasy").checked = false;
+
+      $("#propsBiome").value = "foret_temperee";
+      $("#propsCategory").value = "all";
+      $("#propsIntent").value = "";
+      $("#placeType").value = "village_paysan";
+      $("#placeContent").value = "buildings";
+      $("#buildingVariant").value = "entiers";
+      $("#placeScale").value = "structure_complete";
+      $("#placeIntent").value = "";
+      $("#tilesBiome").value = "foret_temperee";
+      $("#tilesIntent").value = "";
+      $("#pathPlace").value = "";
+      $("#groundComplexity").value = "complete";
+      $("#pathKit").value = "complete";
+      $("#pathDamage").value = "mix";
+      $("#liquidShore").value = "natural";
+      $("#liquidMotion").value = "static";
+
+      $$("[data-search]").forEach(input => { input.value = ""; });
+      ui.selected.props.clear();
+      ui.selected.places.clear();
+      ui.selected.tiles.clear();
+      $("#promptOutput").value = "";
+      $("#negativeOutput").value = "";
+      updateCharCounts();
+
+      switchTab("props");
+      switchSubtab("grounds");
+      updateGroundMenus();
+      refreshAllChoiceLists(true);
+      showToast("Configuration réinitialisée.");
+    }
+
+    function bindEvents() {
+      $$(".tab-btn").forEach(button => button.addEventListener("click", () => switchTab(button.dataset.tab)));
+      $$(".subtab-btn").forEach(button => button.addEventListener("click", () => switchSubtab(button.dataset.subtab)));
+
+      $("#propsBiome").addEventListener("change", () => {
+        refreshChoiceList("props", false);
+        updateLivePreview();
+      });
+      $("#propsCategory").addEventListener("change", () => {
+        refreshChoiceList("props", false);
+        updateLivePreview();
+      });
+
+      $("#placeType").addEventListener("change", () => {
+        refreshChoiceList("places", false);
+        updatePlaceArchitecture();
+        if (ui.activeTile === "paths") refreshChoiceList("tiles", false);
+        updateLivePreview();
+      });
+      $("#placeContent").addEventListener("change", () => {
+        refreshChoiceList("places", false);
+        updateLivePreview();
+      });
+
+      $("#tilesBiome").addEventListener("change", () => {
+        updateGroundMenus();
+        refreshChoiceList("tiles", false);
+        updateLivePreview();
+      });
+      $("#pathPlace").addEventListener("change", () => {
+        refreshChoiceList("tiles", false);
+        updateLivePreview();
+      });
+
+      $$("[data-search]").forEach(input => {
+        input.addEventListener("input", () => renderChoiceList(input.dataset.search));
+      });
+
+      $$("[data-choice-action]").forEach(button => {
+        button.addEventListener("click", () => handleChoiceAction(button.dataset.choiceAction, button.dataset.target));
+      });
+
+      const liveInputs = [
+        "#columns", "#rows", "#resolutionWidth", "#resolutionHeight",
+        "#distributionMode", "#spriteSize", "#maskMode", "#detailLevel",
+        "#stateOption", "#moodOption", "#customElements", "#varyColor",
+        "#varyShape", "#varyWear", "#integratedShadow", "#pixelOutline",
+        "#limitedPalette", "#lockCoherence", "#allowFantasy",
+        "#buildingVariant", "#placeScale", "#propsIntent", "#placeIntent",
+        "#tilesIntent", "#groundNeighbour", "#groundComplexity",
+        "#pathGround", "#pathKit", "#pathDamage", "#liquidShore", "#liquidMotion"
+      ];
+
+      liveInputs.forEach(selector => {
+        const element = $(selector);
+        const eventName = element.matches('input[type="text"], input[type="number"]') ? "input" : "change";
+        element.addEventListener(eventName, () => {
+          if (selector === "#allowFantasy" && ui.activeTile === "paths") refreshChoiceList("tiles", true);
+          updateLivePreview();
+        });
+      });
+
+      $("#generateBtn").addEventListener("click", generatePrompt);
+      $("#copyBtn").addEventListener("click", copyPrompt);
+      $("#resetBtn").addEventListener("click", resetApplication);
+    }
+
+    function boot() {
+      initializeMenus();
+      bindEvents();
+      updateGridPreview();
+      updateMaskPreview();
+      renderWarnings();
+      generatePrompt();
+    }
+
+    document.addEventListener("DOMContentLoaded", boot);
+  </script>
+</body>
+</html>
